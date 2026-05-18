@@ -5,8 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Part-Out AI | Car Part Background Remover</title>
     
-    <!-- 1. CSS Styles (Aesthetics) -->
+    <!-- Nuclear Clear: This stops the "flashing/refreshing" loop -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) { registration.unregister(); }
+            });
+        }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load the AI Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/index.js"></script>
+
     <style>
         .checkerboard { 
             background-color: #0f172a;
@@ -15,32 +27,17 @@
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
     </style>
-
-    <!-- 2. ERROR HANDLING (Moved to top so it's ready immediately) -->
-    <script>
-        function updateStatus(msg, colorClass) {
-            const badge = document.getElementById('status-badge');
-            if (badge) {
-                badge.innerText = msg;
-                badge.className = `mt-4 inline-block px-4 py-1 rounded-full border ${colorClass} text-xs font-bold tracking-widest uppercase`;
-            }
-        }
-
-        function handleLibError() {
-            updateStatus("CDN Error: Library Failed", "border-red-500 bg-red-900/50 text-white");
-            const prompt = document.getElementById('prompt-text');
-            if (prompt) prompt.innerText = "Check your internet and refresh.";
-        }
-    </script>
 </head>
 <body class="bg-gray-950 text-white min-h-screen font-sans">
 
     <div class="max-w-5xl mx-auto p-6 md:p-12 text-center">
         <header class="mb-10">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out AI</h1>
-            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Precision Background Removal</p>
-            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500/50 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase animate-pulse">
-                Initializing Engine...
+            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Automated background removal for car components</p>
+            
+            <!-- Badge Reverted to RED as requested -->
+            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-red-500 bg-red-500/10 text-red-500 text-xs font-bold tracking-widest uppercase animate-pulse">
+                Offline: Initializing...
             </div>
         </header>
 
@@ -54,10 +51,9 @@
                     <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto transition-transform group-hover:scale-110">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"></path></svg>
                     </div>
-                    <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase">Wait for Engine...</p>
+                    <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase italic">Wait for Engine...</p>
                 </div>
 
-                <!-- Processing UI -->
                 <div id="progress-overlay" class="hidden absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
                     <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Downloading AI Model (20MB)...</p>
                     <div class="w-full max-w-xs bg-gray-800 h-2 rounded-full overflow-hidden">
@@ -69,7 +65,124 @@
             <!-- Preview Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
                 <div>
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3">1. Chromakey Green</h3>
+                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3 italic">1. Chromakey Green</h3>
                     <canvas id="canvas-green" class="w-full aspect-square bg-black rounded-2xl border border-gray-800"></canvas>
                 </div>
                 <div>
+                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3 italic">2. Transparent PNG</h3>
+                    <canvas id="canvas-transparent" class="w-full aspect-square checkerboard rounded-2xl border border-gray-800"></canvas>
+                </div>
+            </div>
+
+            <div class="mt-10 flex justify-center">
+                <button id="download-btn" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-black py-5 px-14 rounded-2xl transition-all shadow-xl uppercase tracking-widest text-sm">
+                    Download High-Res PNG
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusBadge = document.getElementById('status-badge');
+        const dropZone = document.getElementById('drop-zone');
+        const promptText = document.getElementById('prompt-text');
+        const fileUpload = document.getElementById('file-upload');
+        const progressOverlay = document.getElementById('progress-overlay');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const downloadBtn = document.getElementById('download-btn');
+
+        // Check if library is ready every 1 second
+        const checkLibrary = setInterval(() => {
+            if (window.imglyRemoveBackground) {
+                clearInterval(checkLibrary);
+                initApp();
+            }
+        }, 1000);
+
+        function initApp() {
+            // Change badge to Green when ready
+            statusBadge.innerText = "Engine Ready";
+            statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
+            
+            // Enable UI
+            dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
+            dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
+            promptText.innerText = "Drop Car Part Image Here";
+            promptText.classList.replace('text-gray-500', 'text-blue-400');
+
+            // Click to upload
+            dropZone.onclick = () => fileUpload.click();
+            
+            // Drag and Drop Logic
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+
+            dropZone.addEventListener('drop', e => {
+                const file = e.dataTransfer.files[0];
+                if (file) processImage(file);
+            });
+
+            fileUpload.onchange = e => {
+                if (e.target.files[0]) processImage(e.target.files[0]);
+            };
+        }
+
+        async function processImage(file) {
+            progressOverlay.classList.remove('hidden');
+            downloadBtn.disabled = true;
+            
+            try {
+                const config = {
+                    // Force library to fetch assets from CDN
+                    publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/",
+                    model: 'medium',
+                    progress: (item, loaded, total) => {
+                        const percent = Math.round((loaded / total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.innerText = `Analyzing ${item}: ${percent}%`;
+                    }
+                };
+
+                const blob = await imglyRemoveBackground.removeBackground(file, config);
+                const img = new Image();
+                img.onload = () => {
+                    const c1 = document.getElementById('canvas-green');
+                    const c2 = document.getElementById('canvas-transparent');
+                    const ctx1 = c1.getContext('2d');
+                    const ctx2 = c2.getContext('2d');
+                    
+                    c1.width = c2.width = img.width;
+                    c1.height = c2.height = img.height;
+
+                    // Stage 1: Green
+                    ctx1.fillStyle = '#00FF00';
+                    ctx1.fillRect(0,0,img.width,img.height);
+                    ctx1.drawImage(img, 0, 0);
+
+                    // Stage 2: Trans
+                    ctx2.clearRect(0,0,img.width,img.height);
+                    ctx2.drawImage(img, 0, 0);
+
+                    progressOverlay.classList.add('hidden');
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.download = `part-out-${Date.now()}.png`;
+                        a.href = c2.toDataURL();
+                        a.click();
+                    };
+                };
+                img.src = URL.createObjectURL(blob);
+            } catch (err) {
+                console.error(err);
+                progressText.innerText = "Processing Failed. Try again.";
+            }
+        }
+    </script>
+</body>
+</html>
