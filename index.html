@@ -80,8 +80,8 @@
     </div>
 
     <script type="module">
-        // Load the library directly as an ES Module - jsDelivr guarantees this path
-        import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/index.mjs";
+        // The '+esm' flag forces jsDelivr to bundle all dependencies (like ndarray) seamlessly for the browser
+        import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/+esm";
     
         const statusBadge = document.getElementById('status-badge');
         const dropZone = document.getElementById('drop-zone');
@@ -92,7 +92,7 @@
         const progressText = document.getElementById('progress-text');
         const downloadBtn = document.getElementById('download-btn');
     
-        // Because it's a module, this runs immediately after a successful import
+        // Initialize immediately because the module bundle resolves cleanly
         if (imglyRemoveBackground) {
             initApp();
         } else {
@@ -155,7 +155,7 @@
                     }
                 };
     
-                // Call the cleanly imported module function
+                // Process image client-side via the compiled ES module
                 const blob = await imglyRemoveBackground(file, config);
                 const img = new Image();
                 
