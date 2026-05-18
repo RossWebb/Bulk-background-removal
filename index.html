@@ -4,15 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Part-Out AI | Car Part Background Remover</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- HIGH-RELIABILITY SCRIPT LOADING -->
-    <script 
-        src="https://unpkg.com/@imgly/background-removal@1.5.3/dist/index.js"
-        onload="initEngine()"
-        onerror="showError('Library failed to download from CDN. Check your internet or adblocker.')"
-    ></script>
-
+    <!-- 1. CSS Styles (Aesthetics) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .checkerboard { 
             background-color: #0f172a;
@@ -21,20 +15,36 @@
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
     </style>
+
+    <!-- 2. ERROR HANDLING (Moved to top so it's ready immediately) -->
+    <script>
+        function updateStatus(msg, colorClass) {
+            const badge = document.getElementById('status-badge');
+            if (badge) {
+                badge.innerText = msg;
+                badge.className = `mt-4 inline-block px-4 py-1 rounded-full border ${colorClass} text-xs font-bold tracking-widest uppercase`;
+            }
+        }
+
+        function handleLibError() {
+            updateStatus("CDN Error: Library Failed", "border-red-500 bg-red-900/50 text-white");
+            const prompt = document.getElementById('prompt-text');
+            if (prompt) prompt.innerText = "Check your internet and refresh.";
+        }
+    </script>
 </head>
 <body class="bg-gray-950 text-white min-h-screen font-sans">
 
-    <div class="max-w-5xl mx-auto p-6 md:p-12">
-        <header class="text-center mb-10">
+    <div class="max-w-5xl mx-auto p-6 md:p-12 text-center">
+        <header class="mb-10">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out AI</h1>
-            <p class="text-gray-400 mt-2 font-medium tracking-wide">Automated background removal for car components</p>
-            
-            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-red-500/50 bg-red-500/10 text-red-500 text-xs font-bold tracking-widest uppercase animate-pulse">
-                Offline: Initializing...
+            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Precision Background Removal</p>
+            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500/50 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase animate-pulse">
+                Initializing Engine...
             </div>
         </header>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
+        <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl text-left">
             
             <!-- Drag & Drop Zone -->
             <div id="drop-zone" class="relative group border-4 border-dashed border-gray-800 rounded-2xl p-12 text-center transition-all opacity-40 cursor-not-allowed">
@@ -42,161 +52,24 @@
                 
                 <div class="space-y-4 pointer-events-none">
                     <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto transition-transform group-hover:scale-110">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"></path></svg>
                     </div>
-                    <div>
-                        <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase tracking-tight">System Loading...</p>
-                        <p class="text-sm text-gray-600 mt-1 uppercase">Headlights, Wheels, Engines, etc.</p>
-                    </div>
+                    <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase">Wait for Engine...</p>
                 </div>
 
-                <div id="progress-overlay" class="hidden absolute inset-0 bg-gray-900/90 flex flex-col items-center justify-center rounded-xl p-6">
-                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center">Downloading Model Brain (20MB)...</p>
+                <!-- Processing UI -->
+                <div id="progress-overlay" class="hidden absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
+                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Downloading AI Model (20MB)...</p>
                     <div class="w-full max-w-xs bg-gray-800 h-2 rounded-full overflow-hidden">
                         <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300 shadow-[0_0_15px_#3b82f6]"></div>
                     </div>
                 </div>
             </div>
 
+            <!-- Preview Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
                 <div>
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3">Stage 1: Chromakey Green</h3>
-                    <div class="aspect-square bg-black rounded-2xl overflow-hidden border border-gray-800 flex items-center justify-center shadow-inner">
-                        <canvas id="canvas-green" class="max-w-full max-h-full"></canvas>
-                    </div>
+                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3">1. Chromakey Green</h3>
+                    <canvas id="canvas-green" class="w-full aspect-square bg-black rounded-2xl border border-gray-800"></canvas>
                 </div>
                 <div>
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3">Stage 2: Transparent PNG</h3>
-                    <div class="aspect-square checkerboard rounded-2xl overflow-hidden border border-gray-800 flex items-center justify-center shadow-inner">
-                        <canvas id="canvas-transparent" class="max-w-full max-h-full"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-10 flex justify-center">
-                <button id="download-btn" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-black py-5 px-14 rounded-2xl transition-all transform hover:scale-105 active:scale-95 shadow-xl uppercase tracking-widest text-sm">
-                    Download High-Res PNG
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const statusBadge = document.getElementById('status-badge');
-        const dropZone = document.getElementById('drop-zone');
-        const promptText = document.getElementById('prompt-text');
-        const fileUpload = document.getElementById('file-upload');
-        const progressOverlay = document.getElementById('progress-overlay');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const downloadBtn = document.getElementById('download-btn');
-        
-        const canvasGreen = document.getElementById('canvas-green');
-        const canvasTrans = document.getElementById('canvas-transparent');
-
-        // ERROR LOGGER
-        function showError(msg) {
-            statusBadge.innerText = "Error: System Failure";
-            statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-red-500 bg-red-900/50 text-white text-xs font-bold uppercase";
-            promptText.innerText = msg;
-            promptText.className = "text-red-500 font-bold";
-        }
-
-        // INITIALIZE
-        function initEngine() {
-            // Give the browser half a second to register the global variable
-            setTimeout(() => {
-                if (typeof imglyRemoveBackground !== 'undefined') {
-                    statusBadge.innerText = "Engine Ready";
-                    statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
-                    
-                    dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
-                    dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
-                    promptText.innerText = "Drop Car Part Image Here";
-                    promptText.classList.replace('text-gray-500', 'text-blue-400');
-                } else {
-                    showError("Library Loaded but Name Not Found. (Check Console F12)");
-                }
-            }, 1000);
-        }
-
-        // FAILSAFE: If onload doesn't fire after 15s
-        setTimeout(() => {
-            if (statusBadge.innerText.includes("Initializing")) {
-                showError("Connection Timeout. Refresh the page.");
-            }
-        }, 15000);
-
-        // DRAG AND DROP
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
-            dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); });
-        });
-
-        dropZone.addEventListener('drop', e => {
-            const file = e.dataTransfer.files[0];
-            if (file && typeof imglyRemoveBackground !== 'undefined') processFile(file);
-        });
-
-        dropZone.addEventListener('click', () => {
-            if (typeof imglyRemoveBackground !== 'undefined') fileUpload.click();
-        });
-
-        fileUpload.addEventListener('change', e => {
-            if (e.target.files[0]) processFile(e.target.files[0]);
-        });
-
-        async function processFile(file) {
-            progressOverlay.classList.remove('hidden');
-            downloadBtn.disabled = true;
-            
-            try {
-                const config = {
-                    publicPath: "https://unpkg.com/@imgly/background-removal@1.5.3/dist/",
-                    model: 'medium',
-                    progress: (item, loaded, total) => {
-                        const percent = Math.round((loaded / total) * 100);
-                        progressBar.style.width = percent + '%';
-                        progressText.innerText = `Preparing AI: ${percent}%`;
-                        if (percent > 99) progressText.innerText = "Cutting Out Background...";
-                    }
-                };
-
-                const resultBlob = await imglyRemoveBackground.removeBackground(file, config);
-                const url = URL.createObjectURL(resultBlob);
-                const img = new Image();
-
-                img.onload = () => {
-                    const ctxGreen = canvasGreen.getContext('2d');
-                    const ctxTrans = canvasTrans.getContext('2d');
-                    
-                    canvasGreen.width = canvasTrans.width = img.width;
-                    canvasGreen.height = canvasTrans.height = img.height;
-
-                    ctxGreen.fillStyle = '#00FF00';
-                    ctxGreen.fillRect(0, 0, img.width, img.height);
-                    ctxGreen.drawImage(img, 0, 0);
-
-                    ctxTrans.clearRect(0, 0, img.width, img.height);
-                    ctxTrans.drawImage(img, 0, 0);
-
-                    progressOverlay.classList.add('hidden');
-                    downloadBtn.disabled = false;
-                    downloadBtn.onclick = () => {
-                        const link = document.createElement('a');
-                        link.download = `partout-${Date.now()}.png`;
-                        link.href = canvasTrans.toDataURL('image/png');
-                        link.click();
-                    };
-                };
-                img.src = url;
-
-            } catch (err) {
-                console.error(err);
-                progressText.innerText = "Error: Image too large or busy.";
-                progressText.classList.add('text-red-500');
-                setTimeout(() => progressOverlay.classList.add('hidden'), 3000);
-            }
-        }
-    </script>
-</body>
-</html>
