@@ -3,157 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Part Background Remover</title>
+    <title>AI Part-Out Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- We use the specific versioned UMD bundle for better compatibility -->
-    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/index.js"></script>
+    
+    <!-- 1. Mandatory for GitHub Pages WASM performance -->
     <script src="coi-serviceworker.js"></script>
+
+    <!-- 2. The AI Library -->
+    <script src="https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.js"></script>
 </head>
-<body class="bg-gray-950 text-white min-h-screen p-4 md:p-10 font-sans">
+<body class="bg-slate-950 text-white min-h-screen p-4">
 
-    <div class="max-w-5xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-black text-blue-500 uppercase tracking-tighter">Part-Out AI</h1>
-            <p class="text-gray-400">High-precision background removal for car components.</p>
-            <!-- Server Warning -->
-            <div id="server-warning" class="mt-4 p-2 bg-red-900/30 border border-red-500 text-red-400 text-xs rounded hidden">
-                ⚠️ Detecting local file access. This app requires a <b>Local Server</b> to load the AI model.
-            </div>
-        </header>
+    <div class="max-w-4xl mx-auto py-10">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-500">CAR PART CUTOUT</h1>
+            <p id="init-status" class="text-yellow-500 text-sm mt-2 font-mono">Loading AI Engine...</p>
+        </div>
 
-        <div class="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl">
-            <!-- Upload Area -->
-            <div id="drop-zone" class="border-4 border-dashed border-gray-800 rounded-2xl p-16 text-center transition-all cursor-not-allowed opacity-50">
-                <input type="file" id="file-upload" class="hidden" accept="image/*">
-                <div id="upload-content" class="space-y-4">
-                    <div id="loader-icon" class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                    <p id="status-text" class="text-xl font-bold text-gray-500">Initializing AI Engine...</p>
-                </div>
+        <div id="drop-zone" class="border-2 border-dashed border-slate-700 bg-slate-900/50 p-16 rounded-3xl text-center cursor-pointer hover:border-blue-500 transition-all">
+            <input type="file" id="file-upload" class="hidden" accept="image/*">
+            <p id="prompt-text" class="text-slate-400 text-lg">Initializing...</p>
+            <div id="progress-bar-container" class="hidden mt-4 w-48 mx-auto bg-slate-800 h-1 rounded-full overflow-hidden">
+                <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all"></div>
             </div>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                <div class="space-y-3">
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Stage 1: Chromakey</h3>
-                    <div class="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
-                        <canvas id="canvas-green" class="max-w-full max-h-full"></canvas>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Stage 2: Transparent PNG</h3>
-                    <div class="aspect-video bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] bg-gray-800 rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
-                        <canvas id="canvas-transparent" class="max-w-full max-h-full"></canvas>
-                    </div>
-                </div>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+            <canvas id="c1" class="w-full rounded-xl border border-slate-800 bg-black"></canvas>
+            <canvas id="c2" class="w-full rounded-xl border border-slate-800 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></canvas>
+        </div>
 
-            <div class="mt-10 flex flex-col items-center gap-4">
-                <button id="download-btn" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-black py-4 px-12 rounded-full transition-all uppercase tracking-widest text-sm">
-                    Download Final Image
-                </button>
-                <div id="error-log" class="text-red-500 text-xs font-mono"></div>
-            </div>
+        <div class="mt-10 text-center">
+            <button id="dl-btn" disabled class="bg-blue-600 px-10 py-3 rounded-full font-bold disabled:opacity-20 transition-all">DOWNLOAD PNG</button>
         </div>
     </div>
 
     <script>
+        const status = document.getElementById('init-status');
+        const prompt = document.getElementById('prompt-text');
         const dropZone = document.getElementById('drop-zone');
-        const fileUpload = document.getElementById('file-upload');
-        const statusText = document.getElementById('status-text');
-        const loaderIcon = document.getElementById('loader-icon');
-        const downloadBtn = document.getElementById('download-btn');
-        const errorLog = document.getElementById('error-log');
-        
-        const canvasGreen = document.getElementById('canvas-green');
-        const ctxGreen = canvasGreen.getContext('2d');
-        const canvasTrans = document.getElementById('canvas-transparent');
-        const ctxTrans = canvasTrans.getContext('2d');
+        const fileInput = document.getElementById('file-upload');
+        const progressCont = document.getElementById('progress-bar-container');
+        const progressFill = document.getElementById('progress-bar');
+        const dlBtn = document.getElementById('dl-btn');
 
-        // Check for local file protocol
-        if (window.location.protocol === 'file:') {
-            document.getElementById('server-warning').classList.remove('hidden');
-        }
-
-        // Wait for library to be ready
-        window.onload = () => {
-            if (typeof imglyRemoveBackground !== 'undefined') {
-                enableUpload();
-            } else {
-                statusText.innerText = "Error: Library not loaded. Check connection.";
+        // Check if library loaded every 500ms
+        const checkLib = setInterval(() => {
+            if (window.imglyRemoveBackground) {
+                clearInterval(checkLib);
+                status.innerText = "AI Engine Ready";
+                status.className = "text-green-500 text-sm mt-2 font-mono";
+                prompt.innerText = "Click or Drop Car Part Image";
             }
+        }, 500);
+
+        dropZone.onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            if (e.target.files[0]) process(e.target.files[0]);
         };
 
-        function enableUpload() {
-            statusText.innerText = "Drop Car Part Image Here";
-            statusText.classList.replace('text-gray-500', 'text-blue-400');
-            loaderIcon.classList.add('hidden');
-            dropZone.classList.remove('opacity-50', 'cursor-not-allowed');
-            dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800');
-        }
+        async function process(file) {
+            prompt.innerText = "Analyzing Pixels...";
+            progressCont.classList.remove('hidden');
+            dlBtn.disabled = true;
 
-        dropZone.addEventListener('click', () => { if(!downloadBtn.parentElement.classList.contains('processing')) fileUpload.click() });
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file) processFile(file);
-        });
-
-        fileUpload.addEventListener('change', (e) => {
-            if (e.target.files[0]) processFile(e.target.files[0]);
-        });
-
-        async function processFile(file) {
-            errorLog.innerText = "";
-            statusText.innerText = "AI Processing... (May take 10-20 seconds)";
-            loaderIcon.classList.remove('hidden');
-            
             try {
-                // IMPORTANT: The function is namespaced in the UMD bundle
-                const resultBlob = await imglyRemoveBackground.removeBackground(file, {
-                    debug: true,
-                    model: 'medium', // 'medium' is better for non-human objects
+                // The library call
+                const blob = await imglyRemoveBackground.removeBackground(file, {
+                    model: 'medium',
                     progress: (item, loaded, total) => {
-                        statusText.innerText = `Analyzing Part: ${Math.round((loaded/total)*100)}%`;
+                        progressFill.style.width = `${(loaded/total)*100}%`;
                     }
                 });
 
-                const url = URL.createObjectURL(resultBlob);
+                const url = URL.createObjectURL(blob);
                 const img = new Image();
                 img.onload = () => {
-                    canvasGreen.width = canvasTrans.width = img.width;
-                    canvasGreen.height = canvasTrans.height = img.height;
+                    const c1 = document.getElementById('c1');
+                    const c2 = document.getElementById('c2');
+                    const ctx1 = c1.getContext('2d');
+                    const ctx2 = c2.getContext('2d');
 
-                    // Stage 1: Chromakey Green
-                    ctxGreen.fillStyle = '#00FF00';
-                    ctxGreen.fillRect(0, 0, canvasGreen.width, canvasGreen.height);
-                    ctxGreen.drawImage(img, 0, 0);
+                    c1.width = c2.width = img.width;
+                    c1.height = c2.height = img.height;
 
-                    // Stage 2: Transparency
-                    ctxTrans.clearRect(0, 0, canvasTrans.width, canvasTrans.height);
-                    ctxTrans.drawImage(img, 0, 0);
+                    // Green Screen
+                    ctx1.fillStyle = '#00FF00';
+                    ctx1.fillRect(0,0,c1.width,c1.height);
+                    ctx1.drawImage(img, 0, 0);
 
-                    statusText.innerText = "Success! Image Cut Out.";
-                    loaderIcon.classList.add('hidden');
-                    downloadBtn.disabled = false;
+                    // Transparent
+                    ctx2.clearRect(0,0,c2.width,c2.height);
+                    ctx2.drawImage(img, 0, 0);
+
+                    prompt.innerText = "Done!";
+                    dlBtn.disabled = false;
+                    dlBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.download = 'cutout.png';
+                        a.href = c2.toDataURL();
+                        a.click();
+                    };
                 };
                 img.src = url;
-
             } catch (err) {
+                prompt.innerText = "Error: " + err.message;
                 console.error(err);
-                statusText.innerText = "Processing Error";
-                errorLog.innerText = err.message.includes('fetch') 
-                    ? "Model Download Failed. Run this on a LOCAL SERVER (Live Server)." 
-                    : err.message;
-                loaderIcon.classList.add('hidden');
             }
         }
-
-        downloadBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'car-part-cutout.png';
-            link.href = canvasTrans.toDataURL('image/png');
-            link.click();
-        });
     </script>
 </body>
 </html>
