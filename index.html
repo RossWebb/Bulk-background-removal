@@ -94,7 +94,7 @@
 
         // Check if library is ready every 1 second
         const checkLibrary = setInterval(() => {
-            if (window.imglyRemoveBackground) {
+            if (window.imgly && window.imgly.backgroundRemoval) {
                 clearInterval(checkLibrary);
                 initApp();
             }
@@ -138,9 +138,12 @@
             
             try {
                 const config = {
-                    // Force library to fetch assets from CDN
                     publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/",
                     model: 'medium',
+                    // Forces the browser to handle the CDN assets without strict cross-origin blockades
+                    fetchArgs: {
+                        mode: 'cors'
+                    },
                     progress: (item, loaded, total) => {
                         const percent = Math.round((loaded / total) * 100);
                         progressBar.style.width = percent + '%';
@@ -148,7 +151,7 @@
                     }
                 };
 
-                const blob = await imglyRemoveBackground.removeBackground(file, config);
+                const blob = await imgly.backgroundRemoval.removeBackground(file, config);
                 const img = new Image();
                 img.onload = () => {
                     const c1 = document.getElementById('canvas-green');
