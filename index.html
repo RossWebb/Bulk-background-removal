@@ -3,130 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Part Background Remover</title>
-    <!-- We use the library from a reliable CDN -->
+    <title>Car Part Cutout AI | Car Part Background Remover</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load the AI library bundle -->
     <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/index.js"></script>
     <style>
-        body { background-color: #0f172a; color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { max-width: 900px; width: 100%; text-align: center; }
-        h1 { color: #3b82f6; letter-spacing: -1px; margin-bottom: 5px; }
-        .status { font-family: monospace; font-size: 14px; margin-bottom: 20px; color: #94a3b8; }
-        .drop-zone { border: 3px dashed #1e293b; background: #1e293b55; padding: 60px; border-radius: 20px; cursor: pointer; transition: 0.3s; }
-        .drop-zone:hover { border-color: #3b82f6; background: #1e293b88; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
-        canvas { width: 100%; background: #000; border-radius: 12px; border: 1px solid #334155; }
-        /* CSS-only checkerboard for the transparent preview */
         .checkerboard { 
-            background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%);
-            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #0f172a;
+            background-image:  linear-gradient(45deg, #1e293b 25%, transparent 25%), linear-gradient(-45deg, #1e293b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1e293b 75%), linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
-        button { background: #3b82f6; color: white; border: none; padding: 15px 40px; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 30px; }
-        button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
-        #progress-bar { width: 0%; height: 4px; background: #3b82f6; margin-top: 10px; transition: 0.3s; }
     </style>
 </head>
-<body>
+<body class="bg-gray-950 text-white min-h-screen font-sans">
 
-    <div class="container">
-        <h1>PART-OUT AI</h1>
-        <div id="status" class="status">Waiting for library...</div>
+    <div class="max-w-5xl mx-auto p-6 md:p-12">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out AI</h1>
+            <p class="text-gray-400 mt-2 font-medium tracking-wide">Automated background removal for car components</p>
+            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500/50 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase animate-pulse">
+                Initializing AI Engine...
+            </div>
+        </header>
 
-        <div id="drop-zone" class="drop-zone">
-            <input type="file" id="file-upload" hidden accept="image/*">
-            <div id="prompt">Drop car part image here</div>
-            <div style="width: 100%; background: #0f172a; height: 4px; margin-top: 15px; border-radius: 2px;">
-                <div id="progress-bar"></div>
+        <!-- Main Workspace -->
+        <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
+            
+            <!-- Drag & Drop Zone -->
+            <div id="drop-zone" class="relative group border-4 border-dashed border-gray-800 rounded-2xl p-12 text-center transition-all opacity-40 cursor-not-allowed">
+                <input type="file" id="file-upload" class="hidden" accept="image/*">
+                
+                <div class="space-y-4 pointer-events-none">
+                    <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    </div>
+                    <div>
+                        <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase tracking-tight">Wait for Engine...</p>
+                        <p class="text-sm text-gray-600 mt-1 uppercase">Headlights, Wheels, Engines, etc.</p>
+                    </div>
+                </div>
+
+                <!-- Progress Overlay -->
+                <div id="progress-overlay" class="hidden absolute inset-0 bg-gray-900/90 flex flex-col items-center justify-center rounded-xl p-6">
+                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm">Processing Pixels...</p>
+                    <div class="w-full max-w-xs bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300 shadow-[0_0_15px_#3b82f6]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                <div class="space-y-3">
+                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center">Stage 1: Chromakey Green</h3>
+                    <div class="aspect-square bg-black rounded-2xl overflow-hidden border border-gray-800 flex items-center justify-center shadow-inner">
+                        <canvas id="canvas-green" class="max-w-full max-h-full"></canvas>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center">Stage 2: Transparent PNG</h3>
+                    <div class="aspect-square checkerboard rounded-2xl overflow-hidden border border-gray-800 flex items-center justify-center shadow-inner">
+                        <canvas id="canvas-transparent" class="max-w-full max-h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Area -->
+            <div class="mt-10 flex justify-center">
+                <button id="download-btn" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-black py-5 px-14 rounded-2xl transition-all transform hover:scale-105 active:scale-95 shadow-xl uppercase tracking-widest text-sm">
+                    Download High-Res PNG
+                </button>
             </div>
         </div>
-
-        <div class="grid">
-            <div>
-                <p style="font-size:12px; color:#64748b">STAGE 1: GREEN SCREEN</p>
-                <canvas id="c1"></canvas>
-            </div>
-            <div>
-                <p style="font-size:12px; color:#64748b">STAGE 2: TRANSPARENT</p>
-                <canvas id="c2" class="checkerboard"></canvas>
-            </div>
-        </div>
-
-        <button id="dl-btn" disabled>DOWNLOAD PNG</button>
     </div>
 
     <script>
-        const statusEl = document.getElementById('status');
-        const promptEl = document.getElementById('prompt');
+        const statusBadge = document.getElementById('status-badge');
         const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-upload');
-        const progressEl = document.getElementById('progress-bar');
-        const dlBtn = document.getElementById('dl-btn');
+        const promptText = document.getElementById('prompt-text');
+        const fileUpload = document.getElementById('file-upload');
+        const progressOverlay = document.getElementById('progress-overlay');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const downloadBtn = document.getElementById('download-btn');
+        
+        const canvasGreen = document.getElementById('canvas-green');
+        const ctxGreen = canvasGreen.getContext('2d');
+        const canvasTrans = document.getElementById('canvas-transparent');
+        const ctxTrans = canvasTrans.getContext('2d');
 
-        // Check if library is ready
-        const check = setInterval(() => {
+        // 1. POLL FOR THE LIBRARY (GITHUB COMPATIBILITY)
+        const checkLibrary = setInterval(() => {
             if (window.imglyRemoveBackground) {
-                clearInterval(check);
-                statusEl.innerText = "AI Engine: READY";
-                statusEl.style.color = "#22c55e";
-                promptEl.innerText = "Click to Upload or Drag & Drop";
+                clearInterval(checkLibrary);
+                statusBadge.innerText = "Engine Ready";
+                statusBadge.classList.remove('animate-pulse', 'border-yellow-500/50', 'bg-yellow-500/10', 'text-yellow-500');
+                statusBadge.classList.add('border-green-500/50', 'bg-green-500/10', 'text-green-500');
+                
+                dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
+                dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
+                promptText.innerText = "Drop Car Part Image Here";
+                promptText.classList.replace('text-gray-500', 'text-blue-400');
             }
         }, 500);
 
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { if(e.target.files[0]) process(e.target.files[0]); };
+        // 2. DRAG AND DROP HANDLERS
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => e.preventDefault());
+            dropZone.addEventListener(eventName, e => e.stopPropagation());
+        });
 
-        async function process(file) {
-            promptEl.innerText = "AI is working...";
-            dlBtn.disabled = true;
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('border-blue-500', 'bg-gray-800/50'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-blue-500', 'bg-gray-800/50'));
+
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('border-blue-500', 'bg-gray-800/50');
+            const file = e.dataTransfer.files[0];
+            if (file && window.imglyRemoveBackground) processFile(file);
+        });
+
+        dropZone.addEventListener('click', () => {
+            if (window.imglyRemoveBackground) fileUpload.click();
+        });
+
+        fileUpload.addEventListener('change', (e) => {
+            if (e.target.files[0]) processFile(e.target.files[0]);
+        });
+
+        // 3. AI PROCESSING LOGIC
+        async function processFile(file) {
+            progressOverlay.classList.remove('hidden');
+            downloadBtn.disabled = true;
             
             try {
-                // CONFIG IS KEY: Pointing specifically to the CDN for WASM assets
                 const config = {
                     publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/",
                     model: 'medium',
                     progress: (item, loaded, total) => {
-                        progressEl.style.width = `${(loaded/total)*100}%`;
+                        const percent = Math.round((loaded / total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.innerText = `Analyzing ${item}: ${percent}%`;
                     }
                 };
 
-                const blob = await imglyRemoveBackground.removeBackground(file, config);
-                const url = URL.createObjectURL(blob);
+                const resultBlob = await imglyRemoveBackground.removeBackground(file, config);
+                const url = URL.createObjectURL(resultBlob);
                 const img = new Image();
 
                 img.onload = () => {
-                    const c1 = document.getElementById('c1');
-                    const c2 = document.getElementById('c2');
-                    const ctx1 = c1.getContext('2d');
-                    const ctx2 = c2.getContext('2d');
+                    canvasGreen.width = canvasTrans.width = img.width;
+                    canvasGreen.height = canvasTrans.height = img.height;
 
-                    c1.width = c2.width = img.width;
-                    c1.height = c2.height = img.height;
+                    // Green Screen (Stage 1)
+                    ctxGreen.fillStyle = '#00FF00';
+                    ctxGreen.fillRect(0, 0, canvasGreen.width, canvasGreen.height);
+                    ctxGreen.drawImage(img, 0, 0);
 
-                    // Stage 1
-                    ctx1.fillStyle = '#00FF00';
-                    ctx1.fillRect(0,0,c1.width,c1.height);
-                    ctx1.drawImage(img, 0, 0);
+                    // Transparency (Stage 2)
+                    ctxTrans.clearRect(0, 0, canvasTrans.width, canvasTrans.height);
+                    ctxTrans.drawImage(img, 0, 0);
 
-                    // Stage 2
-                    ctx2.clearRect(0,0,c2.width,c2.height);
-                    ctx2.drawImage(img, 0, 0);
-
-                    promptEl.innerText = "Processing Complete!";
-                    dlBtn.disabled = false;
-                    dlBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.download = 'car-part.png';
-                        a.href = c2.toDataURL();
-                        a.click();
+                    progressOverlay.classList.add('hidden');
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const link = document.createElement('a');
+                        link.download = `partout-${Date.now()}.png`;
+                        link.href = canvasTrans.toDataURL('image/png');
+                        link.click();
                     };
                 };
                 img.src = url;
 
             } catch (err) {
-                promptEl.innerText = "Error!";
-                statusEl.innerText = "Error: " + err.message;
-                statusEl.style.color = "#ef4444";
                 console.error(err);
+                progressText.innerText = "Error Processing Image";
+                progressText.classList.add('text-red-500');
+                setTimeout(() => progressOverlay.classList.add('hidden'), 3000);
             }
         }
     </script>
