@@ -17,7 +17,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Load the AI Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/browser/index.js"></script>
+       // <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/browser/index.js"></script>
 
     <style>
         .checkerboard { 
@@ -82,117 +82,120 @@
         </div>
     </div>
 
-<script>
-    const statusBadge = document.getElementById('status-badge');
-    const dropZone = document.getElementById('drop-zone');
-    const promptText = document.getElementById('prompt-text');
-    const fileUpload = document.getElementById('file-upload');
-    const progressOverlay = document.getElementById('progress-overlay');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
-    const downloadBtn = document.getElementById('download-btn');
-
-    // Safe, direct initialization once the window fully loads
-    window.addEventListener('load', () => {
-        // The browser bundle explicitly exposes 'imglyRemoveBackground' globally
-        if (typeof imglyRemoveBackground !== 'undefined') {
+    <script type="module">
+        // Load the library directly as an ES Module - jsDelivr guarantees this path
+        import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/dist/index.mjs";
+    
+        const statusBadge = document.getElementById('status-badge');
+        const dropZone = document.getElementById('drop-zone');
+        const promptText = document.getElementById('prompt-text');
+        const fileUpload = document.getElementById('file-upload');
+        const progressOverlay = document.getElementById('progress-overlay');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const downloadBtn = document.getElementById('download-btn');
+    
+        // Because it's a module, this runs immediately after a successful import
+        if (imglyRemoveBackground) {
             initApp();
         } else {
-            console.error("Failed to load the background removal library asset.");
+            showError();
+        }
+    
+        function showError() {
+            console.error("Failed to map the background removal library module.");
             statusBadge.innerText = "Error Loading Engine";
             statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-red-500 bg-red-500/10 text-red-500 text-xs font-bold tracking-widest uppercase";
         }
-    });
-
-    function initApp() {
-        // Change badge to Green when ready
-        statusBadge.innerText = "Engine Ready";
-        statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
-        
-        // Enable UI
-        dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
-        dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
-        promptText.innerText = "Drop Car Part Image Here";
-        promptText.classList.replace('text-gray-500', 'text-blue-400');
-
-        // Click to upload
-        dropZone.onclick = () => fileUpload.click();
-        
-        // Drag and Drop Logic
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, e => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
-
-        dropZone.addEventListener('drop', e => {
-            const file = e.dataTransfer.files[0];
-            if (file) processImage(file);
-        });
-
-        fileUpload.onchange = e => {
-            if (e.target.files[0]) processImage(e.target.files[0]);
-        };
-    }
-
-    async function processImage(file) {
-        progressOverlay.classList.remove('hidden');
-        downloadBtn.disabled = true;
-        progressBar.style.width = '0%';
-        
-        try {
-            // Configuration optimized specifically for running out of a GitHub Pages browser environment
-            const config = {
-                model: 'medium',
-                fetchArgs: {
-                    mode: 'cors'
-                },
-                progress: (item, loaded, total) => {
-                    const percent = Math.round((loaded / total) * 100);
-                    progressBar.style.width = percent + '%';
-                    progressText.innerText = `Analyzing Component... ${percent}%`;
-                }
-            };
-
-            // Call the correct global function from the browser bundle
-            const blob = await imglyRemoveBackground(file, config);
-            const img = new Image();
+    
+        function initApp() {
+            // Change badge to Green when ready
+            statusBadge.innerText = "Engine Ready";
+            statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
             
-            img.onload = () => {
-                const c1 = document.getElementById('canvas-green');
-                const c2 = document.getElementById('canvas-transparent');
-                const ctx1 = c1.getContext('2d');
-                const ctx2 = c2.getContext('2d');
-                
-                c1.width = c2.width = img.width;
-                c1.height = c2.height = img.height;
-
-                // Stage 1: Chromakey Green
-                ctx1.fillStyle = '#00FF00';
-                ctx1.fillRect(0, 0, img.width, img.height);
-                ctx1.drawImage(img, 0, 0);
-
-                // Stage 2: Transparent PNG
-                ctx2.clearRect(0, 0, img.width, img.height);
-                ctx2.drawImage(img, 0, 0);
-
-                progressOverlay.classList.add('hidden');
-                downloadBtn.disabled = false;
-                downloadBtn.onclick = () => {
-                    const a = document.createElement('a');
-                    a.download = `part-out-${Date.now()}.png`;
-                    a.href = c2.toDataURL();
-                    a.click();
-                };
+            // Enable UI
+            dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
+            dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
+            promptText.innerText = "Drop Car Part Image Here";
+            promptText.classList.replace('text-gray-500', 'text-blue-400');
+    
+            // Click to upload
+            dropZone.onclick = () => fileUpload.click();
+            
+            // Drag and Drop Logic
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+    
+            dropZone.addEventListener('drop', e => {
+                const file = e.dataTransfer.files[0];
+                if (file) processImage(file);
+            });
+    
+            fileUpload.onchange = e => {
+                if (e.target.files[0]) processImage(e.target.files[0]);
             };
-            img.src = URL.createObjectURL(blob);
-        } catch (err) {
-            console.error(err);
-            progressText.innerText = "Processing Failed. Try a smaller image.";
-            setTimeout(() => progressOverlay.classList.add('hidden'), 3000);
         }
-    }
-</script>
+    
+        async function processImage(file) {
+            progressOverlay.classList.remove('hidden');
+            downloadBtn.disabled = true;
+            progressBar.style.width = '0%';
+            
+            try {
+                const config = {
+                    model: 'medium',
+                    fetchArgs: {
+                        mode: 'cors'
+                    },
+                    progress: (item, loaded, total) => {
+                        const percent = Math.round((loaded / total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.innerText = `Analyzing Component... ${percent}%`;
+                    }
+                };
+    
+                // Call the cleanly imported module function
+                const blob = await imglyRemoveBackground(file, config);
+                const img = new Image();
+                
+                img.onload = () => {
+                    const c1 = document.getElementById('canvas-green');
+                    const c2 = document.getElementById('canvas-transparent');
+                    const ctx1 = c1.getContext('2d');
+                    const ctx2 = c2.getContext('2d');
+                    
+                    c1.width = c2.width = img.width;
+                    c1.height = c2.height = img.height;
+    
+                    // Stage 1: Chromakey Green
+                    ctx1.fillStyle = '#00FF00';
+                    ctx1.fillRect(0, 0, img.width, img.height);
+                    ctx1.drawImage(img, 0, 0);
+    
+                    // Stage 2: Transparent PNG
+                    ctx2.clearRect(0, 0, img.width, img.height);
+                    ctx2.drawImage(img, 0, 0);
+    
+                    progressOverlay.classList.add('hidden');
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.download = `part-out-${Date.now()}.png`;
+                        a.href = c2.toDataURL();
+                        a.click();
+                    };
+                };
+                img.src = URL.createObjectURL(blob);
+            } catch (err) {
+                console.error(err);
+                progressText.innerText = "Processing Failed. Try a smaller image.";
+                setTimeout(() => progressOverlay.classList.add('hidden'), 3000);
+            }
+        }
+    </script>
 </body>
 </html>
