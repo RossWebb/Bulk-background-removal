@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out Vector | Fixed JSON</title>
+    <title>Part-Out Vector | Stable</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-white min-h-screen font-sans">
     <div class="max-w-4xl mx-auto p-6 md:p-12">
         <header class="mb-8 text-center">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out Vector</h1>
-            <p class="text-gray-400">Robust JSON Parsing • Gemini 2.5 Flash</p>
+            <p class="text-gray-400">Stable Version • Better Parsing</p>
             <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
                 Enter Gemini API Key
             </div>
@@ -31,11 +31,10 @@
             <div id="log-container" class="mt-6 max-h-96 overflow-auto text-xs font-mono bg-black/50 p-4 rounded-xl"></div>
 
             <div id="preview-container" class="hidden mt-6">
-                <h3 class="text-sm font-bold mb-2">Last Clipped Result</h3>
-                <canvas id="display-canvas" class="max-w-full border border-slate-700 rounded-xl"></canvas>
-                <button id="manual-download" 
-                        class="mt-4 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold w-full">
-                        Download Last Image Again
+                <h3 class="text-sm font-bold mb-2">Last Result</h3>
+                <canvas id="display-canvas" class="max-w-full border border-slate-700 rounded-xl bg-white"></canvas>
+                <button id="manual-download" class="mt-4 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold w-full">
+                    Download Last Image Again
                 </button>
             </div>
         </div>
@@ -83,27 +82,20 @@
                 genAI = new GoogleGenerativeAI(key);
                 apiPanel.classList.add('hidden');
                 mainApp.classList.remove('hidden');
-                statusBadge.textContent = "✅ Connected - Gemini 2.5 Flash";
+                statusBadge.textContent = "✅ Gemini 2.5 Flash Ready";
                 statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
                 setupEvents();
-                log("Engine initialized", "success");
+                log("Engine initialized successfully", "success");
             } catch (e) {
-                log("Init failed: " + e.message, "error");
+                log("Init error: " + e.message, "error");
             }
         }
 
         function setupEvents() {
             dropZone.onclick = () => fileUpload.click();
-            dropZone.ondrop = (e) => {
-                e.preventDefault();
-                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                if (files.length) startBatch(files);
-            };
-            dropZone.ondragover = (e) => e.preventDefault();
-            fileUpload.onchange = (e) => {
-                const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
-                if (files.length) startBatch(files);
-            };
+            dropZone.ondrop = e => { e.preventDefault(); handleFiles(e.dataTransfer.files); };
+            dropZone.ondragover = e => e.preventDefault();
+            fileUpload.onchange = e => handleFiles(e.target.files);
             manualDownloadBtn.onclick = () => {
                 if (lastCanvasDataURL) {
                     const a = document.createElement('a');
@@ -114,12 +106,14 @@
             };
         }
 
-        function startBatch(files) {
+        function handleFiles(fileList) {
+            const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) return;
             fileQueue = files;
             currentIndex = 0;
             logContainer.innerHTML = '';
             previewContainer.classList.add('hidden');
-            log(`Starting batch of ${files.length} image(s)`, "success");
+            log(`Starting batch of ${files.length} images`, "success");
             processNext();
         }
 
@@ -134,28 +128,21 @@
 
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
                 const imagePart = await fileToGenerativePart(file);
 
                 const result = await model.generateContent([
                     imagePart,
-                    `You are an expert at coordinate extraction.
-Return **only** the bounding box as a raw JSON array of 4 integers: [ymin, xmin, ymax, xmax]
-Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
+                    "Return only a JSON array with exactly 4 numbers: [ymin, xmin, ymax, xmax] using 0-1000 scale. No other text."
                 ]);
 
                 let text = result.response.text().trim();
-                log("Raw response: " + text.substring(0, 120) + "...");
+                log("Response received");
 
-                // === Improved parsing ===
-                let box = parseCoordinates(text);
-
-                if (!box || box.length !== 4) {
-                    throw new Error("Failed to extract valid coordinates");
-                }
+                const box = extractBox(text);
+                if (!box) throw new Error("Could not extract coordinates");
 
                 await clipAndSave(file, box);
-                log(`✅ Successfully processed ${file.name}`, "success");
+                log(`✅ Clipped ${file.name}`, "success");
 
             } catch (err) {
                 log(`❌ ERROR on ${file.name}: ${err.message}`, "error");
@@ -163,42 +150,41 @@ Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
             }
 
             currentIndex++;
-            setTimeout(processNext, 800);
+            setTimeout(processNext, 900);
         }
 
-        // Robust coordinate parser
-        function parseCoordinates(text) {
-            // Remove markdown code blocks
-            text = text.replace(/```json
+        function extractBox(text) {
+            // Clean common wrappers
+            text = text.replace(/```json|```|json/g, '').trim();
             
-            // Try direct JSON parse
             try {
                 const parsed = JSON.parse(text);
-                if (Array.isArray(parsed)) return parsed.map(Number);
+                if (Array.isArray(parsed) && parsed.length === 4) return parsed.map(Number);
             } catch (e) {}
 
-            // Extract numbers
-            const numbers = text.match(/-?\d+/g);
-            if (numbers && numbers.length >= 4) {
-                return numbers.slice(0, 4).map(Number);
+            // Fallback: extract first 4 numbers
+            const matches = text.match(/\d+/g);
+            if (matches && matches.length >= 4) {
+                return matches.slice(0, 4).map(Number);
             }
-
             return null;
         }
 
         async function clipAndSave(file, box) {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = e => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = displayCanvas;
                         const ctx = canvas.getContext('2d');
 
-                        let yMin = (box[0] / 1000) * img.height;
-                        let xMin = (box[1] / 1000) * img.width;
-                        let yMax = (box[2] / 1000) * img.height;
-                        let xMax = (box[3] / 1000) * img.width;
+                        let [yMin, xMin, yMax, xMax] = box;
+
+                        yMin = (yMin / 1000) * img.height;
+                        xMin = (xMin / 1000) * img.width;
+                        yMax = (yMax / 1000) * img.height;
+                        xMax = (xMax / 1000) * img.width;
 
                         const padX = img.width * 0.045;
                         const padY = img.height * 0.045;
@@ -212,7 +198,7 @@ Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
                         const h = yMax - yMin;
 
                         if (w < 30 || h < 30) {
-                            log("Box too small, skipping clip", "error");
+                            log("Box too small", "error");
                             resolve();
                             return;
                         }
@@ -226,7 +212,6 @@ Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
                         lastCanvasDataURL = canvas.toDataURL('image/png');
                         previewContainer.classList.remove('hidden');
 
-                        // Auto download
                         const a = document.createElement('a');
                         a.href = lastCanvasDataURL;
                         a.download = `clipped-${file.name.replace(/\.[^/.]+$/, "")}.png`;
@@ -241,15 +226,13 @@ Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
         }
 
         function removeBackground(ctx, width, height) {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
             const tolerance = 68;
 
             const samples = [
-                {x: 8, y: 8},
-                {x: width-9, y: 8},
-                {x: 8, y: height-9},
-                {x: width-9, y: height-9}
+                {x:8, y:8}, {x:width-9, y:8},
+                {x:8, y:height-9}, {x:width-9, y:height-9}
             ];
 
             for (let i = 0; i < data.length; i += 4) {
@@ -263,9 +246,9 @@ Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
                         break;
                     }
                 }
-                if (isBg) data[i + 3] = 0;
+                if (isBg) data[i+3] = 0;
             }
-            ctx.putImageData(imageData, 0, 0);
+            ctx.putImageData(imgData, 0, 0);
         }
 
         function fileToGenerativePart(file) {
