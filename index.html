@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out Vector | Fixed</title>
+    <title>Part-Out Vector | Fixed JSON</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-white min-h-screen font-sans">
     <div class="max-w-4xl mx-auto p-6 md:p-12">
         <header class="mb-8 text-center">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out Vector</h1>
-            <p class="text-gray-400">Fixed • Using Gemini 2.5 Flash</p>
+            <p class="text-gray-400">Robust JSON Parsing • Gemini 2.5 Flash</p>
             <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
                 Enter Gemini API Key
             </div>
@@ -65,7 +65,6 @@
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             logContainer.appendChild(entry);
             logContainer.scrollTop = logContainer.scrollHeight;
-            console.log(message);
         }
 
         const savedKey = localStorage.getItem('gemini_vector_key');
@@ -84,10 +83,10 @@
                 genAI = new GoogleGenerativeAI(key);
                 apiPanel.classList.add('hidden');
                 mainApp.classList.remove('hidden');
-                statusBadge.textContent = "✅ Gemini 2.5 Flash Connected";
+                statusBadge.textContent = "✅ Connected - Gemini 2.5 Flash";
                 statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
                 setupEvents();
-                log("Engine ready with gemini-2.5-flash", "success");
+                log("Engine initialized", "success");
             } catch (e) {
                 log("Init failed: " + e.message, "error");
             }
@@ -109,7 +108,7 @@
                 if (lastCanvasDataURL) {
                     const a = document.createElement('a');
                     a.href = lastCanvasDataURL;
-                    a.download = `clipped-part-${Date.now()}.png`;
+                    a.download = `clipped-${Date.now()}.png`;
                     a.click();
                 }
             };
@@ -134,27 +133,29 @@
             log(`Processing: ${file.name}`);
 
             try {
-                const model = genAI.getGenerativeModel({ 
-                    model: "gemini-2.5-flash" 
-                });
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
                 const imagePart = await fileToGenerativePart(file);
 
                 const result = await model.generateContent([
                     imagePart,
-                    `Return ONLY a JSON array with exactly 4 integers: [ymin, xmin, ymax, xmax]
-                     Scale: 0-1000 (1000 = full image dimension).
-                     Target the main automotive/mechanical part.`
+                    `You are an expert at coordinate extraction.
+Return **only** the bounding box as a raw JSON array of 4 integers: [ymin, xmin, ymax, xmax]
+Use 0-1000 normalized scale. No explanation, no markdown, no code blocks.`
                 ]);
 
                 let text = result.response.text().trim();
-                log("Gemini response: " + text);
+                log("Raw response: " + text.substring(0, 120) + "...");
 
-                let box = JSON.parse(text);
-                if (!Array.isArray(box) || box.length !== 4) throw new Error("Bad coordinate format");
+                // === Improved parsing ===
+                let box = parseCoordinates(text);
+
+                if (!box || box.length !== 4) {
+                    throw new Error("Failed to extract valid coordinates");
+                }
 
                 await clipAndSave(file, box);
-                log(`✅ Successfully clipped ${file.name}`, "success");
+                log(`✅ Successfully processed ${file.name}`, "success");
 
             } catch (err) {
                 log(`❌ ERROR on ${file.name}: ${err.message}`, "error");
@@ -162,7 +163,27 @@
             }
 
             currentIndex++;
-            setTimeout(processNext, 700);
+            setTimeout(processNext, 800);
+        }
+
+        // Robust coordinate parser
+        function parseCoordinates(text) {
+            // Remove markdown code blocks
+            text = text.replace(/```json
+            
+            // Try direct JSON parse
+            try {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) return parsed.map(Number);
+            } catch (e) {}
+
+            // Extract numbers
+            const numbers = text.match(/-?\d+/g);
+            if (numbers && numbers.length >= 4) {
+                return numbers.slice(0, 4).map(Number);
+            }
+
+            return null;
         }
 
         async function clipAndSave(file, box) {
@@ -179,8 +200,8 @@
                         let yMax = (box[2] / 1000) * img.height;
                         let xMax = (box[3] / 1000) * img.width;
 
-                        const padX = img.width * 0.04;
-                        const padY = img.height * 0.04;
+                        const padX = img.width * 0.045;
+                        const padY = img.height * 0.045;
 
                         xMin = Math.max(0, xMin - padX);
                         yMin = Math.max(0, yMin - padY);
@@ -190,8 +211,8 @@
                         const w = xMax - xMin;
                         const h = yMax - yMin;
 
-                        if (w < 20 || h < 20) {
-                            log("Box too small", "error");
+                        if (w < 30 || h < 30) {
+                            log("Box too small, skipping clip", "error");
                             resolve();
                             return;
                         }
@@ -205,7 +226,7 @@
                         lastCanvasDataURL = canvas.toDataURL('image/png');
                         previewContainer.classList.remove('hidden');
 
-                        // Auto-download
+                        // Auto download
                         const a = document.createElement('a');
                         a.href = lastCanvasDataURL;
                         a.download = `clipped-${file.name.replace(/\.[^/.]+$/, "")}.png`;
@@ -222,11 +243,13 @@
         function removeBackground(ctx, width, height) {
             const imageData = ctx.getImageData(0, 0, width, height);
             const data = imageData.data;
-            const tolerance = 70;
+            const tolerance = 68;
 
             const samples = [
-                {x:5, y:5}, {x:width-6, y:5},
-                {x:5, y:height-6}, {x:width-6, y:height-6}
+                {x: 8, y: 8},
+                {x: width-9, y: 8},
+                {x: 8, y: height-9},
+                {x: width-9, y: height-9}
             ];
 
             for (let i = 0; i < data.length; i += 4) {
