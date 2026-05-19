@@ -3,195 +3,246 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out AI | Car Part Background Remover</title>
-    
-    <!-- Nuclear Clear: This stops the "flashing/refreshing" loop -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
-    </script>
-
+    <title>Part-Out AI | Low-Cost Vector Clipper</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        .checkerboard { 
-            background-color: #0f172a;
-            background-image:  linear-gradient(45deg, #1e293b 25%, transparent 25%), linear-gradient(-45deg, #1e293b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1e293b 75%), linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-    </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen font-sans">
+<body class="bg-slate-950 text-white min-h-screen font-sans">
 
-    <div class="max-w-5xl mx-auto p-6 md:p-12 text-center">
-        <header class="mb-10">
-            <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out AI</h1>
-            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Automated background removal for car components</p>
+    <div class="max-w-4xl mx-auto p-6 md:p-12 text-center">
+        <header class="mb-8">
+            <span class="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-blue-500/20">Project: High-Efficiency Vector Engine</span>
+            <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic mt-3">Part-Out Vector</h1>
+            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Sub-penny background clipping via coordinate mapping</p>
             
-            <!-- Badge Reverted to RED as requested -->
-            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-red-500 bg-red-500/10 text-red-500 text-xs font-bold tracking-widest uppercase animate-pulse">
-                Offline: Initializing...
+            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
+                Setup Required: Enter API Key
             </div>
         </header>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl text-left">
+        <div id="api-panel" class="max-w-md mx-auto mb-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-2">
+            <input type="password" id="api-key-input" placeholder="Paste Gemini API Key Here" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm w-full focus:outline-none focus:border-blue-500 text-white">
+            <button id="save-key-btn" class="bg-blue-600 hover:bg-blue-500 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all">Connect</button>
+        </div>
+
+        <div id="main-app" class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-left hidden space-y-8">
             
-            <!-- Drag & Drop Zone -->
-            <div id="drop-zone" class="relative group border-4 border-dashed border-gray-800 rounded-2xl p-12 text-center transition-all opacity-40 cursor-not-allowed">
-                <input type="file" id="file-upload" class="hidden" accept="image/*">
+            <div id="drop-zone" class="relative group border-4 border-dashed border-slate-800 rounded-2xl p-12 text-center transition-all cursor-pointer hover:border-blue-500 hover:bg-slate-800/50">
+                <input type="file" id="file-upload" class="hidden" accept="image/*" multiple>
                 
                 <div class="space-y-4 pointer-events-none">
-                    <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto transition-transform group-hover:scale-110">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"></path></svg>
+                    <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                     </div>
-                    <p id="prompt-text" class="text-xl font-bold text-gray-500 uppercase italic">Wait for Engine...</p>
+                    <div>
+                        <p class="text-xl font-bold text-blue-400 uppercase italic">Drop Images for Low-Cost Batch Clipping</p>
+                        <p class="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">Processes via lightweight Gemini 2.5 Flash text coordinates</p>
+                    </div>
                 </div>
 
-                <div id="progress-overlay" class="hidden absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
-                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Downloading AI Model (20MB)...</p>
-                    <div class="w-full max-w-xs bg-gray-800 h-2 rounded-full overflow-hidden">
-                        <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300 shadow-[0_0_15px_#3b82f6]"></div>
+                <div id="progress-overlay" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
+                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Analyzing objects...</p>
+                    <div class="w-full max-w-xs bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Preview Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                <div>
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3 italic">1. Chromakey Green</h3>
-                    <canvas id="canvas-green" class="w-full aspect-square bg-black rounded-2xl border border-gray-800"></canvas>
+            <div id="preview-container" class="hidden flex flex-col items-center justify-center border border-slate-800 p-4 rounded-2xl bg-slate-950/50">
+                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3 italic">Latest Local Canvas Extract</h3>
+                <div class="max-w-full overflow-hidden flex items-center justify-center rounded-xl border border-slate-800 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWUyOTNiIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMxZTI5M2IiLz48L3N2Zz4=')]">
+                    <canvas id="display-canvas" class="max-w-full max-h-[500px] h-auto w-auto object-contain block"></canvas>
                 </div>
-                <div>
-                    <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center mb-3 italic">2. Transparent PNG</h3>
-                    <canvas id="canvas-transparent" class="w-full aspect-square checkerboard rounded-2xl border border-gray-800"></canvas>
-                </div>
-            </div>
-
-            <div class="mt-10 flex justify-center">
-                <button id="download-btn" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-black py-5 px-14 rounded-2xl transition-all shadow-xl uppercase tracking-widest text-sm">
-                    Download High-Res PNG
-                </button>
             </div>
         </div>
     </div>
 
     <script type="module">
-        // The '+esm' flag forces jsDelivr to bundle all dependencies (like ndarray) seamlessly for the browser
-        import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.3/+esm";
-    
+        import { GoogleGenAI } from "https://esm.run/@google/genai";
+
+        let ai = null;
+        let fileQueue = [];
+        let currentQueueIndex = 0;
+
         const statusBadge = document.getElementById('status-badge');
+        const apiPanel = document.getElementById('api-panel');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        const mainApp = document.getElementById('main-app');
+        
         const dropZone = document.getElementById('drop-zone');
-        const promptText = document.getElementById('prompt-text');
         const fileUpload = document.getElementById('file-upload');
         const progressOverlay = document.getElementById('progress-overlay');
-        const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
-        const downloadBtn = document.getElementById('download-btn');
-    
-        // Initialize immediately because the module bundle resolves cleanly
-        if (imglyRemoveBackground) {
-            initApp();
-        } else {
-            showError();
+        const progressBar = document.getElementById('progress-bar');
+        const previewContainer = document.getElementById('preview-container');
+        const displayCanvas = document.getElementById('display-canvas');
+
+        const savedKey = localStorage.getItem('gemini_vector_key');
+        if (savedKey) { initEngine(savedKey); }
+
+        saveKeyBtn.onclick = () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('gemini_vector_key', key);
+                initEngine(key);
+            }
+        };
+
+        function initEngine(key) {
+            try {
+                ai = new GoogleGenAI({ apiKey: key });
+                apiPanel.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                statusBadge.innerText = "Gemini 2.5 Vector Engine Ready";
+                statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
+                setupAppEvents();
+            } catch (err) {
+                console.error(err);
+                statusBadge.innerText = "Initialization Error";
+            }
         }
-    
-        function showError() {
-            console.error("Failed to map the background removal library module.");
-            statusBadge.innerText = "Error Loading Engine";
-            statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-red-500 bg-red-500/10 text-red-500 text-xs font-bold tracking-widest uppercase";
-        }
-    
-        function initApp() {
-            // Change badge to Green when ready
-            statusBadge.innerText = "Engine Ready";
-            statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
-            
-            // Enable UI
-            dropZone.classList.remove('opacity-40', 'cursor-not-allowed');
-            dropZone.classList.add('cursor-pointer', 'hover:border-blue-500', 'hover:bg-gray-800/50');
-            promptText.innerText = "Drop Car Part Image Here";
-            promptText.classList.replace('text-gray-500', 'text-blue-400');
-    
-            // Click to upload
+
+        function setupAppEvents() {
             dropZone.onclick = () => fileUpload.click();
-            
-            // Drag and Drop Logic
+
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, e => {
                     e.preventDefault();
                     e.stopPropagation();
                 });
             });
-    
+
             dropZone.addEventListener('drop', e => {
-                const file = e.dataTransfer.files[0];
-                if (file) processImage(file);
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                if (files.length > 0) startBatch(files);
             });
-    
+
             fileUpload.onchange = e => {
-                if (e.target.files[0]) processImage(e.target.files[0]);
+                const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+                if (files.length > 0) startBatch(files);
             };
         }
-    
-        async function processImage(file) {
+
+        function startBatch(files) {
+            fileQueue = files;
+            currentQueueIndex = 0;
             progressOverlay.classList.remove('hidden');
-            downloadBtn.disabled = true;
-            progressBar.style.width = '0%';
-            
-            try {
-                const config = {
-                    model: 'medium',
-                    fetchArgs: {
-                        mode: 'cors'
-                    },
-                    progress: (item, loaded, total) => {
-                        const percent = Math.round((loaded / total) * 100);
-                        progressBar.style.width = percent + '%';
-                        progressText.innerText = `Analyzing Component... ${percent}%`;
-                    }
-                };
-    
-                // Process image client-side via the compiled ES module
-                const blob = await imglyRemoveBackground(file, config);
-                const img = new Image();
-                
-                img.onload = () => {
-                    const c1 = document.getElementById('canvas-green');
-                    const c2 = document.getElementById('canvas-transparent');
-                    const ctx1 = c1.getContext('2d');
-                    const ctx2 = c2.getContext('2d');
-                    
-                    c1.width = c2.width = img.width;
-                    c1.height = c2.height = img.height;
-    
-                    // Stage 1: Chromakey Green
-                    ctx1.fillStyle = '#00FF00';
-                    ctx1.fillRect(0, 0, img.width, img.height);
-                    ctx1.drawImage(img, 0, 0);
-    
-                    // Stage 2: Transparent PNG
-                    ctx2.clearRect(0, 0, img.width, img.height);
-                    ctx2.drawImage(img, 0, 0);
-    
-                    progressOverlay.classList.add('hidden');
-                    downloadBtn.disabled = false;
-                    downloadBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.download = `part-out-${Date.now()}.png`;
-                        a.href = c2.toDataURL();
-                        a.click();
-                    };
-                };
-                img.src = URL.createObjectURL(blob);
-            } catch (err) {
-                console.error(err);
-                progressText.innerText = "Processing Failed. Try a smaller image.";
-                setTimeout(() => progressOverlay.classList.add('hidden'), 3000);
+            previewContainer.classList.remove('hidden');
+            processNextFile();
+        }
+
+        async function processNextFile() {
+            if (currentQueueIndex >= fileQueue.length) {
+                progressText.innerText = "Batch Complete!";
+                progressBar.style.width = '100%';
+                setTimeout(() => { progressOverlay.classList.add('hidden'); }, 1500);
+                return;
             }
+
+            const activeFile = fileQueue[currentQueueIndex];
+            const displayProgress = Math.round((currentQueueIndex / fileQueue.length) * 100);
+            progressBar.style.width = `${displayProgress}%`;
+            progressText.innerText = `[${currentQueueIndex + 1}/${fileQueue.length}] Mapping: ${activeFile.name}...`;
+
+		try {
+                const imagePart = await fileToGenerativePart(activeFile);
+                
+                // Force Gemini 2.5 Flash to strictly follow a rigid numerical array blueprint
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: [
+                        imagePart,
+                        "Identify the 2D bounding box of the single main mechanical car component or automotive part. Return ONLY the four bounding box integer values in order: [ymin, xmin, ymax, xmax]."
+                    ],
+                    config: {
+                        responseMimeType: "application/json",
+                        // This schema acts as a structural clamp: it mandates a 4-item array of integers
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: { type: "INTEGER" },
+                            minItems: 4,
+                            maxItems: 4
+                        }
+                    }
+                });
+
+                const jsonText = response.text ? response.text.trim() : null;
+                if (!jsonText) throw new Error("No coordinate payload returned.");
+                
+                const coordinates = JSON.parse(jsonText); 
+                
+                // Extra failsafe check: Make sure we have 4 real numbers before cutting
+                if (Array.isArray(coordinates) && coordinates.length === 4) {
+                    await clipOriginalImage(activeFile, coordinates);
+                } else {
+                    throw new Error("Returned array did not meet 4-point requirement.");
+                }
+
+                currentQueueIndex++;
+                setTimeout(() => { processNextFile(); }, 500);
+
+            } catch (err) {
+                console.error(`Error mapping ${activeFile.name}:`, err);
+                currentQueueIndex++;
+                setTimeout(() => { processNextFile(); }, 2000);
+            }
+        }
+
+        function clipOriginalImage(file, box) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const ctx = displayCanvas.getContext('2d');
+                        
+                        // Parse bounding array percentages into concrete local pixel dimensions
+                        img.onload = () => {
+                        const ctx = displayCanvas.getContext('2d');
+                        
+                        // FIX: Divide by 1000 instead of 100 to map Gemini's standard object detection coordinates
+                        const yMin = (box[0] / 1000) * img.height;
+                        const xMin = (box[1] / 1000) * img.width;
+                        const yMax = (box[2] / 1000) * img.height;
+                        const xMax = (box[3] / 1000) * img.width;
+
+                        const clipWidth = xMax - xMin;
+                        const clipHeight = yMax - yMin;
+
+                        // Size canvas to fit ONLY the targeted extracted component bounding box
+                        displayCanvas.width = clipWidth;
+                        displayCanvas.height = clipHeight;
+                        ctx.clearRect(0, 0, clipWidth, clipHeight);
+
+                        // Extract precisely that subsection out of the original full-res file data
+                        ctx.drawImage(img, xMin, yMin, clipWidth, clipHeight, 0, 0, clipWidth, clipHeight);
+
+                        // Direct Download link assembly
+                        const a = document.createElement('a');
+                        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                        a.download = `clipped--${baseName}.png`;
+                        a.href = displayCanvas.toDataURL('image/png');
+                        a.click();
+
+                        resolve();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function fileToGenerativePart(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve({
+                    inlineData: {
+                        data: reader.result.split(',')[1],
+                        mimeType: file.type
+                    },
+                });
+                reader.readAsDataURL(file);
+            });
         }
     </script>
 </body>
