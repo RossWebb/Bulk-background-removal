@@ -22,6 +22,7 @@
         <div id="api-panel" class="max-w-md mx-auto mb-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-2">
             <input type="password" id="api-key-input" placeholder="Paste Gemini API Key Here" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm w-full focus:outline-none focus:border-blue-500 text-white">
             <button id="save-key-btn" class="bg-blue-600 hover:bg-blue-500 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all">Connect</button>
+            <button id="clear-key-btn" class="bg-red-600/20 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all hidden">Reset</button>
         </div>
 
         <div id="main-app" class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-left hidden space-y-8">
@@ -41,9 +42,10 @@
 
                 <div id="progress-overlay" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
                     <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Analyzing objects...</p>
-                    <div class="w-full max-w-xs bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="w-full max-w-xs bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
                         <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
                     </div>
+                    <p id="progress-subtext" class="text-[10px] text-gray-500 uppercase font-semibold tracking-wider"></p>
                 </div>
             </div>
 
@@ -52,6 +54,14 @@
                 <div class="max-w-full overflow-hidden flex items-center justify-center rounded-xl border border-slate-800 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWUyOTNiIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMxZTI5M2IiLz48L3N2Zz4=')]">
                     <canvas id="display-canvas" class="max-w-full max-h-[500px] h-auto w-auto object-contain block"></canvas>
                 </div>
+            </div>
+
+            <div id="error-log-container" class="hidden border border-red-900/50 rounded-2xl p-4 bg-red-950/20">
+                <h4 class="text-xs font-black text-red-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Execution Warnings / Connection Drops
+                </h4>
+                <ul id="error-list" class="space-y-1 text-xs text-gray-400 font-mono list-disc list-inside"></ul>
             </div>
         </div>
     </div>
@@ -67,15 +77,19 @@
         const apiPanel = document.getElementById('api-panel');
         const apiKeyInput = document.getElementById('api-key-input');
         const saveKeyBtn = document.getElementById('save-key-btn');
+        const clearKeyBtn = document.getElementById('clear-key-btn');
         const mainApp = document.getElementById('main-app');
         
         const dropZone = document.getElementById('drop-zone');
         const fileUpload = document.getElementById('file-upload');
         const progressOverlay = document.getElementById('progress-overlay');
         const progressText = document.getElementById('progress-text');
+        const progressSubtext = document.getElementById('progress-subtext');
         const progressBar = document.getElementById('progress-bar');
         const previewContainer = document.getElementById('preview-container');
         const displayCanvas = document.getElementById('display-canvas');
+        const errorLogContainer = document.getElementById('error-log-container');
+        const errorList = document.getElementById('error-list');
 
         const savedKey = localStorage.getItem('gemini_vector_key');
         if (savedKey) { initEngine(savedKey); }
@@ -88,12 +102,19 @@
             }
         };
 
+        clearKeyBtn.onclick = () => {
+            localStorage.removeItem('gemini_vector_key');
+            window.location.reload();
+        };
+
         function initEngine(key) {
             try {
                 ai = new GoogleGenAI({ apiKey: key });
-                apiPanel.classList.add('hidden');
+                apiKeyInput.classList.add('hidden');
+                saveKeyBtn.classList.add('hidden');
+                clearKeyBtn.classList.remove('hidden');
                 mainApp.classList.remove('hidden');
-                statusBadge.innerText = "Gemini 2.5 Vector Engine Ready";
+                statusBadge.innerText = "Gemini 2.5 Vector Engine Connected";
                 statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
                 setupAppEvents();
             } catch (err) {
@@ -126,23 +147,30 @@
         function startBatch(files) {
             fileQueue = files;
             currentQueueIndex = 0;
+            errorList.innerHTML = "";
+            errorLogContainer.classList.add('hidden');
             progressOverlay.classList.remove('hidden');
             previewContainer.classList.remove('hidden');
+            progressBar.className = "bg-blue-500 h-full w-0 transition-all duration-300";
             processNextFile();
         }
 
         async function processNextFile() {
             if (currentQueueIndex >= fileQueue.length) {
-                progressText.innerText = "Batch Complete!";
+                progressText.innerText = "Batch Processing Complete";
+                progressSubtext.innerText = "Check your downloads folder for cropped items";
                 progressBar.style.width = '100%';
-                setTimeout(() => { progressOverlay.classList.add('hidden'); }, 1500);
+                progressBar.className = "bg-green-500 h-full w-full transition-all duration-300";
+                setTimeout(() => { progressOverlay.classList.add('hidden'); }, 2500);
                 return;
             }
 
             const activeFile = fileQueue[currentQueueIndex];
             const displayProgress = Math.round((currentQueueIndex / fileQueue.length) * 100);
             progressBar.style.width = `${displayProgress}%`;
-            progressText.innerText = `[${currentQueueIndex + 1}/${fileQueue.length}] Mapping: ${activeFile.name}...`;
+            progressBar.className = "bg-blue-500 h-full transition-all duration-300";
+            progressText.innerHTML = `Analyzing Component [${currentQueueIndex + 1}/${fileQueue.length}]`;
+            progressSubtext.innerHTML = `File: <span class="text-white">${activeFile.name}</span>`;
 
             try {
                 const imagePart = await fileToGenerativePart(activeFile);
@@ -165,14 +193,14 @@
                 });
 
                 const jsonText = response.text ? response.text.trim() : null;
-                if (!jsonText) throw new Error("No coordinate payload returned.");
+                if (!jsonText) throw new Error("Google returned an empty coordinate response.");
                 
                 const coordinates = JSON.parse(jsonText); 
                 
                 if (Array.isArray(coordinates) && coordinates.length === 4) {
                     await clipOriginalImage(activeFile, coordinates);
                 } else {
-                    throw new Error("Returned array did not meet 4-point requirement.");
+                    throw new Error("Returned JSON coordinates were misformed or incomplete.");
                 }
 
                 currentQueueIndex++;
@@ -180,8 +208,29 @@
 
             } catch (err) {
                 console.error(`Error mapping ${activeFile.name}:`, err);
+                
+                // Track clean descriptive phrases for common system failures
+                let friendlyMessage = err.message || "Unknown communication block";
+                if (friendlyMessage.includes("503") || friendlyMessage.includes("UNAVAILABLE")) {
+                    friendlyMessage = "Google Server 503 Spike (Free tier queue overloaded. Try again in a minute or swap to paid key).";
+                } else if (friendlyMessage.includes("API key")) {
+                    friendlyMessage = "Authentication Failed: Your API key is rejected or expired.";
+                }
+
+                // Flash screen panel state to red warning style
+                progressBar.className = "bg-red-500 h-full transition-all duration-300";
+                progressText.innerHTML = `<span class="text-red-500 font-bold">Skipped: ${activeFile.name}</span>`;
+                progressSubtext.innerHTML = `<span class="text-red-400 font-mono text-[11px]">${friendlyMessage}</span>`;
+
+                // Add to visual error log at screen footer
+                errorLogContainer.classList.remove('hidden');
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${activeFile.name}</strong>: ${friendlyMessage}`;
+                errorList.appendChild(li);
+
                 currentQueueIndex++;
-                setTimeout(() => { processNextFile(); }, 2000);
+                // Hold screen frame for 3.5 seconds during error conditions so you have a clean window to inspect
+                setTimeout(() => { processNextFile(); }, 3500);
             }
         }
 
@@ -193,7 +242,6 @@
                     img.onload = () => {
                         const ctx = displayCanvas.getContext('2d');
                         
-                        // Divide by 1000 to map Gemini's standard object detection bounds
                         const yMin = (box[0] / 1000) * img.height;
                         const xMin = (box[1] / 1000) * img.width;
                         const yMax = (box[2] / 1000) * img.height;
@@ -202,15 +250,16 @@
                         const clipWidth = xMax - xMin;
                         const clipHeight = yMax - yMin;
 
-                        // Size canvas to fit ONLY the targeted extracted component bounding box
+                        if (clipWidth <= 0 || clipHeight <= 0) {
+                            resolve(); // Skip zero footprint results to avoid script lock
+                            return;
+                        }
+
                         displayCanvas.width = clipWidth;
                         displayCanvas.height = clipHeight;
                         ctx.clearRect(0, 0, clipWidth, clipHeight);
-
-                        // Extract precisely that subsection out of the original full-res file data
                         ctx.drawImage(img, xMin, yMin, clipWidth, clipHeight, 0, 0, clipWidth, clipHeight);
 
-                        // Direct Download link assembly
                         const a = document.createElement('a');
                         const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
                         a.download = `clipped--${baseName}.png`;
@@ -226,14 +275,21 @@
         }
 
         async function fileToGenerativePart(file) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => resolve({
-                    inlineData: {
-                        data: reader.result.split(',')[1],
-                        mimeType: file.type
-                    },
-                });
+                reader.onload = () => {
+                    if (!reader.result) {
+                        reject(new Error("Local reader returned empty image block."));
+                        return;
+                    }
+                    resolve({
+                        inlineData: {
+                            data: reader.result.split(',')[1],
+                            mimeType: file.type
+                        },
+                    });
+                };
+                reader.onerror = () => reject(new Error("Failed reading local disk structure."));
                 reader.readAsDataURL(file);
             });
         }
