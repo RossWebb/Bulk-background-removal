@@ -144,10 +144,9 @@
             progressBar.style.width = `${displayProgress}%`;
             progressText.innerText = `[${currentQueueIndex + 1}/${fileQueue.length}] Mapping: ${activeFile.name}...`;
 
-		try {
+            try {
                 const imagePart = await fileToGenerativePart(activeFile);
                 
-                // Force Gemini 2.5 Flash to strictly follow a rigid numerical array blueprint
                 const response = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: [
@@ -156,7 +155,6 @@
                     ],
                     config: {
                         responseMimeType: "application/json",
-                        // This schema acts as a structural clamp: it mandates a 4-item array of integers
                         responseSchema: {
                             type: "ARRAY",
                             items: { type: "INTEGER" },
@@ -171,7 +169,6 @@
                 
                 const coordinates = JSON.parse(jsonText); 
                 
-                // Extra failsafe check: Make sure we have 4 real numbers before cutting
                 if (Array.isArray(coordinates) && coordinates.length === 4) {
                     await clipOriginalImage(activeFile, coordinates);
                 } else {
@@ -196,11 +193,7 @@
                     img.onload = () => {
                         const ctx = displayCanvas.getContext('2d');
                         
-                        // Parse bounding array percentages into concrete local pixel dimensions
-                        img.onload = () => {
-                        const ctx = displayCanvas.getContext('2d');
-                        
-                        // FIX: Divide by 1000 instead of 100 to map Gemini's standard object detection coordinates
+                        // Divide by 1000 to map Gemini's standard object detection bounds
                         const yMin = (box[0] / 1000) * img.height;
                         const xMin = (box[1] / 1000) * img.width;
                         const yMax = (box[2] / 1000) * img.height;
