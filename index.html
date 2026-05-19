@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out Vector | Debug Mode</title>
+    <title>Part-Out Vector | Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-white min-h-screen font-sans">
     <div class="max-w-4xl mx-auto p-6 md:p-12">
         <header class="mb-8 text-center">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out Vector</h1>
-            <p class="text-gray-400">Debug Mode - Better Error Visibility</p>
+            <p class="text-gray-400">Fixed • Using Gemini 2.5 Flash</p>
             <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
                 Enter Gemini API Key
             </div>
@@ -25,17 +25,17 @@
         <div id="main-app" class="hidden bg-slate-900 border border-slate-800 rounded-3xl p-8">
             <div id="drop-zone" class="border-4 border-dashed border-slate-700 rounded-2xl p-12 text-center cursor-pointer hover:border-blue-500">
                 <input type="file" id="file-upload" class="hidden" accept="image/*" multiple>
-                <p class="text-blue-400 font-bold text-xl">Drop or Click to Upload Images</p>
+                <p class="text-blue-400 font-bold text-xl">Drop Images Here</p>
             </div>
 
             <div id="log-container" class="mt-6 max-h-96 overflow-auto text-xs font-mono bg-black/50 p-4 rounded-xl"></div>
 
             <div id="preview-container" class="hidden mt-6">
-                <h3 class="text-sm font-bold mb-2">Last Result</h3>
+                <h3 class="text-sm font-bold mb-2">Last Clipped Result</h3>
                 <canvas id="display-canvas" class="max-w-full border border-slate-700 rounded-xl"></canvas>
                 <button id="manual-download" 
-                        class="mt-4 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold">
-                        Download Last Image
+                        class="mt-4 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold w-full">
+                        Download Last Image Again
                 </button>
             </div>
         </div>
@@ -68,7 +68,6 @@
             console.log(message);
         }
 
-        // Load saved key
         const savedKey = localStorage.getItem('gemini_vector_key');
         if (savedKey) initEngine(savedKey);
 
@@ -85,12 +84,12 @@
                 genAI = new GoogleGenerativeAI(key);
                 apiPanel.classList.add('hidden');
                 mainApp.classList.remove('hidden');
-                statusBadge.textContent = "✅ Connected - Ready";
+                statusBadge.textContent = "✅ Gemini 2.5 Flash Connected";
                 statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
                 setupEvents();
-                log("Engine initialized successfully", "success");
+                log("Engine ready with gemini-2.5-flash", "success");
             } catch (e) {
-                log("Failed to initialize Gemini: " + e.message, "error");
+                log("Init failed: " + e.message, "error");
             }
         }
 
@@ -121,61 +120,49 @@
             currentIndex = 0;
             logContainer.innerHTML = '';
             previewContainer.classList.add('hidden');
-            log(`Starting batch of ${files.length} images`, "success");
+            log(`Starting batch of ${files.length} image(s)`, "success");
             processNext();
         }
 
         async function processNext() {
             if (currentIndex >= fileQueue.length) {
-                log("Batch processing finished.", "success");
+                log("✅ Batch completed!", "success");
                 return;
             }
 
             const file = fileQueue[currentIndex];
-            log(`Processing ${file.name} (${currentIndex + 1}/${fileQueue.length})`);
+            log(`Processing: ${file.name}`);
 
             try {
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-2.5-flash" 
+                });
+
                 const imagePart = await fileToGenerativePart(file);
 
                 const result = await model.generateContent([
                     imagePart,
-                    `Analyze this image and return ONLY a JSON array with exactly 4 integers: [ymin, xmin, ymax, xmax]
-                     Coordinates must be scaled 0-1000 (1000 = full image size).
-                     Focus on the main automotive / mechanical part.`
+                    `Return ONLY a JSON array with exactly 4 integers: [ymin, xmin, ymax, xmax]
+                     Scale: 0-1000 (1000 = full image dimension).
+                     Target the main automotive/mechanical part.`
                 ]);
 
                 let text = result.response.text().trim();
-                log("Raw Gemini response: " + text);
+                log("Gemini response: " + text);
 
-                let box;
-                try {
-                    box = JSON.parse(text);
-                } catch (e) {
-                    // Try to extract numbers as fallback
-                    const numbers = text.match(/\d+/g);
-                    if (numbers && numbers.length >= 4) {
-                        box = numbers.slice(0, 4).map(Number);
-                        log("Used regex fallback for coordinates", "success");
-                    } else {
-                        throw new Error("Could not parse coordinates");
-                    }
-                }
-
-                if (!Array.isArray(box) || box.length !== 4) {
-                    throw new Error("Invalid box format");
-                }
+                let box = JSON.parse(text);
+                if (!Array.isArray(box) || box.length !== 4) throw new Error("Bad coordinate format");
 
                 await clipAndSave(file, box);
-                log(`Successfully clipped ${file.name}`, "success");
+                log(`✅ Successfully clipped ${file.name}`, "success");
 
             } catch (err) {
-                log(`ERROR processing ${file.name}: ${err.message}`, "error");
+                log(`❌ ERROR on ${file.name}: ${err.message}`, "error");
                 console.error(err);
             }
 
             currentIndex++;
-            setTimeout(processNext, 800);
+            setTimeout(processNext, 700);
         }
 
         async function clipAndSave(file, box) {
@@ -187,7 +174,6 @@
                         const canvas = displayCanvas;
                         const ctx = canvas.getContext('2d');
 
-                        // Scale normalized coordinates
                         let yMin = (box[0] / 1000) * img.height;
                         let xMin = (box[1] / 1000) * img.width;
                         let yMax = (box[2] / 1000) * img.height;
@@ -204,8 +190,8 @@
                         const w = xMax - xMin;
                         const h = yMax - yMin;
 
-                        if (w < 10 || h < 10) {
-                            log("Box too small, skipping", "error");
+                        if (w < 20 || h < 20) {
+                            log("Box too small", "error");
                             resolve();
                             return;
                         }
@@ -219,13 +205,11 @@
                         lastCanvasDataURL = canvas.toDataURL('image/png');
                         previewContainer.classList.remove('hidden');
 
-                        // Auto download
+                        // Auto-download
                         const a = document.createElement('a');
                         a.href = lastCanvasDataURL;
                         a.download = `clipped-${file.name.replace(/\.[^/.]+$/, "")}.png`;
-                        document.body.appendChild(a);
                         a.click();
-                        document.body.removeChild(a);
 
                         resolve();
                     };
@@ -247,17 +231,16 @@
 
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i], g = data[i+1], b = data[i+2];
-                let isBackground = false;
-
+                let isBg = false;
                 for (const s of samples) {
                     const idx = (s.y * width + s.x) * 4;
                     const dist = Math.hypot(r - data[idx], g - data[idx+1], b - data[idx+2]);
                     if (dist < tolerance) {
-                        isBackground = true;
+                        isBg = true;
                         break;
                     }
                 }
-                if (isBackground) data[i + 3] = 0;
+                if (isBg) data[i + 3] = 0;
             }
             ctx.putImageData(imageData, 0, 0);
         }
