@@ -3,73 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out AI | Low-Cost Vector Clipper</title>
+    <title>Part-Out Vector | Low-Cost Clipper</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-white min-h-screen font-sans">
-
     <div class="max-w-4xl mx-auto p-6 md:p-12 text-center">
         <header class="mb-8">
-            <span class="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-blue-500/20">Project: High-Efficiency Vector Engine</span>
+            <span class="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-blue-500/20">High-Efficiency Vector Engine</span>
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic mt-3">Part-Out Vector</h1>
-            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Sub-penny background clipping via coordinate mapping</p>
+            <p class="text-gray-400 mt-2 font-medium tracking-wide italic">Sub-penny automotive part clipping via Gemini</p>
             
             <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
-                Setup Required: Enter API Key
+                Setup Required: Enter Gemini API Key
             </div>
         </header>
 
         <div id="api-panel" class="max-w-md mx-auto mb-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-2">
-            <input type="password" id="api-key-input" placeholder="Paste Gemini API Key Here" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm w-full focus:outline-none focus:border-blue-500 text-white">
-            <button id="save-key-btn" class="bg-blue-600 hover:bg-blue-500 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all">Connect</button>
-            <button id="clear-key-btn" class="bg-red-600/20 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all hidden">Reset</button>
+            <input type="password" id="api-key-input" placeholder="Paste Gemini API Key Here" 
+                   class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm w-full focus:outline-none focus:border-blue-500 text-white">
+            <button id="save-key-btn" 
+                    class="bg-blue-600 hover:bg-blue-500 text-xs font-bold uppercase tracking-wider px-6 py-2 rounded-xl transition-all">
+                    Connect
+            </button>
         </div>
 
         <div id="main-app" class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-left hidden space-y-8">
-            
             <div id="drop-zone" class="relative group border-4 border-dashed border-slate-800 rounded-2xl p-12 text-center transition-all cursor-pointer hover:border-blue-500 hover:bg-slate-800/50">
                 <input type="file" id="file-upload" class="hidden" accept="image/*" multiple>
                 
                 <div class="space-y-4 pointer-events-none">
                     <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
                     </div>
                     <div>
-                        <p class="text-xl font-bold text-blue-400 uppercase italic">Drop Images for Low-Cost Batch Clipping</p>
-                        <p class="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">Processes via lightweight Gemini 2.5 Flash text coordinates</p>
+                        <p class="text-xl font-bold text-blue-400 uppercase italic">Drop Images for Batch Clipping</p>
+                        <p class="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">Gemini 1.5 Flash • Works on Landscape & Portrait</p>
                     </div>
                 </div>
 
                 <div id="progress-overlay" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-xl p-6 z-50">
-                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Analyzing objects...</p>
-                    <div class="w-full max-w-xs bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                    <p id="progress-text" class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-sm text-center italic">Analyzing image...</p>
+                    <div class="w-full max-w-xs bg-slate-800 h-2 rounded-full overflow-hidden">
                         <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
                     </div>
-                    <p id="progress-subtext" class="text-[10px] text-gray-500 uppercase font-semibold tracking-wider"></p>
                 </div>
             </div>
 
             <div id="preview-container" class="hidden flex flex-col items-center justify-center border border-slate-800 p-4 rounded-2xl bg-slate-950/50">
-                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3 italic">Latest Local Canvas Extract</h3>
+                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3 italic">Clipped Result (Auto-Downloaded)</h3>
                 <div class="max-w-full overflow-hidden flex items-center justify-center rounded-xl border border-slate-800 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWUyOTNiIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMxZTI5M2IiLz48L3N2Zz4=')]">
                     <canvas id="display-canvas" class="max-w-full max-h-[500px] h-auto w-auto object-contain block"></canvas>
                 </div>
-            </div>
-
-            <div id="error-log-container" class="hidden border border-red-900/50 rounded-2xl p-4 bg-red-950/20">
-                <h4 class="text-xs font-black text-red-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                    Execution Warnings / Connection Drops
-                </h4>
-                <ul id="error-list" class="space-y-1 text-xs text-gray-400 font-mono list-disc list-inside"></ul>
             </div>
         </div>
     </div>
 
     <script type="module">
-        import { GoogleGenAI } from "https://esm.run/@google/genai";
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-        let ai = null;
+        let genAI = null;
         let fileQueue = [];
         let currentQueueIndex = 0;
 
@@ -77,22 +71,19 @@
         const apiPanel = document.getElementById('api-panel');
         const apiKeyInput = document.getElementById('api-key-input');
         const saveKeyBtn = document.getElementById('save-key-btn');
-        const clearKeyBtn = document.getElementById('clear-key-btn');
         const mainApp = document.getElementById('main-app');
         
         const dropZone = document.getElementById('drop-zone');
         const fileUpload = document.getElementById('file-upload');
         const progressOverlay = document.getElementById('progress-overlay');
         const progressText = document.getElementById('progress-text');
-        const progressSubtext = document.getElementById('progress-subtext');
         const progressBar = document.getElementById('progress-bar');
         const previewContainer = document.getElementById('preview-container');
         const displayCanvas = document.getElementById('display-canvas');
-        const errorLogContainer = document.getElementById('error-log-container');
-        const errorList = document.getElementById('error-list');
 
+        // Load saved key
         const savedKey = localStorage.getItem('gemini_vector_key');
-        if (savedKey) { initEngine(savedKey); }
+        if (savedKey) initEngine(savedKey);
 
         saveKeyBtn.onclick = () => {
             const key = apiKeyInput.value.trim();
@@ -102,19 +93,12 @@
             }
         };
 
-        clearKeyBtn.onclick = () => {
-            localStorage.removeItem('gemini_vector_key');
-            window.location.reload();
-        };
-
         function initEngine(key) {
             try {
-                ai = new GoogleGenAI({ apiKey: key });
-                apiKeyInput.classList.add('hidden');
-                saveKeyBtn.classList.add('hidden');
-                clearKeyBtn.classList.remove('hidden');
+                genAI = new GoogleGenerativeAI(key);
+                apiPanel.classList.add('hidden');
                 mainApp.classList.remove('hidden');
-                statusBadge.innerText = "Gemini 2.5 Vector Engine Connected";
+                statusBadge.innerText = "✅ Gemini 1.5 Flash Ready";
                 statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
                 setupAppEvents();
             } catch (err) {
@@ -126,8 +110,8 @@
         function setupAppEvents() {
             dropZone.onclick = () => fileUpload.click();
 
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, e => {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+                dropZone.addEventListener(ev, e => {
                     e.preventDefault();
                     e.stopPropagation();
                 });
@@ -135,136 +119,114 @@
 
             dropZone.addEventListener('drop', e => {
                 const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                if (files.length > 0) startBatch(files);
+                if (files.length) startBatch(files);
             });
 
             fileUpload.onchange = e => {
                 const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
-                if (files.length > 0) startBatch(files);
+                if (files.length) startBatch(files);
             };
         }
 
         function startBatch(files) {
             fileQueue = files;
             currentQueueIndex = 0;
-            errorList.innerHTML = "";
-            errorLogContainer.classList.add('hidden');
             progressOverlay.classList.remove('hidden');
             previewContainer.classList.remove('hidden');
-            progressBar.className = "bg-blue-500 h-full w-0 transition-all duration-300";
             processNextFile();
         }
 
         async function processNextFile() {
             if (currentQueueIndex >= fileQueue.length) {
-                progressText.innerText = "Batch Processing Complete";
-                progressSubtext.innerText = "Check your downloads folder for cropped items";
+                progressText.innerText = "Batch Complete!";
                 progressBar.style.width = '100%';
-                progressBar.className = "bg-green-500 h-full w-full transition-all duration-300";
-                setTimeout(() => { progressOverlay.classList.add('hidden'); }, 2500);
+                setTimeout(() => progressOverlay.classList.add('hidden'), 1500);
                 return;
             }
 
-            const activeFile = fileQueue[currentQueueIndex];
-            const displayProgress = Math.round((currentQueueIndex / fileQueue.length) * 100);
-            progressBar.style.width = `${displayProgress}%`;
-            progressBar.className = "bg-blue-500 h-full transition-all duration-300";
-            progressText.innerHTML = `Analyzing Component [${currentQueueIndex + 1}/${fileQueue.length}]`;
-            progressSubtext.innerHTML = `File: <span class="text-white">${activeFile.name}</span>`;
+            const file = fileQueue[currentQueueIndex];
+            const progress = Math.round(((currentQueueIndex) / fileQueue.length) * 100);
+            progressBar.style.width = `${progress}%`;
+            progressText.innerText = `[${currentQueueIndex + 1}/${fileQueue.length}] Processing: ${file.name}`;
 
             try {
-                const imagePart = await fileToGenerativePart(activeFile);
-                
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: [
-                        imagePart,
-                        "Identify the 2D bounding box of the single main mechanical car component or automotive part. Return ONLY the four bounding box integer values in order: [ymin, xmin, ymax, xmax]."
-                    ],
-                    config: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: "ARRAY",
-                            items: { type: "INTEGER" },
-                            minItems: 4,
-                            maxItems: 4
-                        }
-                    }
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-1.5-flash"
                 });
 
-                const jsonText = response.text ? response.text.trim() : null;
-                if (!jsonText) throw new Error("Google returned an empty coordinate response.");
-                
-                const coordinates = JSON.parse(jsonText); 
-                
-                if (Array.isArray(coordinates) && coordinates.length === 4) {
-                    await clipOriginalImage(activeFile, coordinates);
-                } else {
-                    throw new Error("Returned JSON coordinates were misformed or incomplete.");
+                const imagePart = await fileToGenerativePart(file);
+
+                const result = await model.generateContent([
+                    imagePart,
+                    `Identify the single main mechanical car part or automotive component in the image.
+                     Return ONLY a JSON array of 4 integers: [ymin, xmin, ymax, xmax]
+                     Use 0-1000 normalized scale (1000 = full image width/height).
+                     Focus on the most prominent part.`
+                ]);
+
+                let text = result.response.text().trim();
+                let coords = JSON.parse(text);
+
+                if (!Array.isArray(coords) || coords.length !== 4) {
+                    throw new Error("Invalid coordinate format");
                 }
 
-                currentQueueIndex++;
-                setTimeout(() => { processNextFile(); }, 500);
-
+                await clipOriginalImage(file, coords);
+                
             } catch (err) {
-                console.error(`Error mapping ${activeFile.name}:`, err);
-                
-                // Track clean descriptive phrases for common system failures
-                let friendlyMessage = err.message || "Unknown communication block";
-                if (friendlyMessage.includes("503") || friendlyMessage.includes("UNAVAILABLE")) {
-                    friendlyMessage = "Google Server 503 Spike (Free tier queue overloaded. Try again in a minute or swap to paid key).";
-                } else if (friendlyMessage.includes("API key")) {
-                    friendlyMessage = "Authentication Failed: Your API key is rejected or expired.";
-                }
-
-                // Flash screen panel state to red warning style
-                progressBar.className = "bg-red-500 h-full transition-all duration-300";
-                progressText.innerHTML = `<span class="text-red-500 font-bold">Skipped: ${activeFile.name}</span>`;
-                progressSubtext.innerHTML = `<span class="text-red-400 font-mono text-[11px]">${friendlyMessage}</span>`;
-
-                // Add to visual error log at screen footer
-                errorLogContainer.classList.remove('hidden');
-                const li = document.createElement('li');
-                li.innerHTML = `<strong>${activeFile.name}</strong>: ${friendlyMessage}`;
-                errorList.appendChild(li);
-
-                currentQueueIndex++;
-                // Hold screen frame for 3.5 seconds during error conditions so you have a clean window to inspect
-                setTimeout(() => { processNextFile(); }, 3500);
+                console.error(`Error processing ${file.name}:`, err);
             }
+
+            currentQueueIndex++;
+            setTimeout(processNextFile, 600);
         }
 
-        function clipOriginalImage(file, box) {
+        async function clipOriginalImage(file, box) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const img = new Image();
                     img.onload = () => {
                         const ctx = displayCanvas.getContext('2d');
-                        
-                        const yMin = (box[0] / 1000) * img.height;
-                        const xMin = (box[1] / 1000) * img.width;
-                        const yMax = (box[2] / 1000) * img.height;
-                        const xMax = (box[3] / 1000) * img.width;
 
-                        const clipWidth = xMax - xMin;
-                        const clipHeight = yMax - yMin;
+                        // === Coordinate Mapping (works for both landscape & portrait) ===
+                        let yMin = (box[0] / 1000) * img.height;
+                        let xMin = (box[1] / 1000) * img.width;
+                        let yMax = (box[2] / 1000) * img.height;
+                        let xMax = (box[3] / 1000) * img.width;
 
-                        if (clipWidth <= 0 || clipHeight <= 0) {
-                            resolve(); // Skip zero footprint results to avoid script lock
+                        // Safety padding
+                        const padY = img.height * 0.035;
+                        const padX = img.width * 0.035;
+
+                        yMin = Math.max(0, yMin - padY);
+                        xMin = Math.max(0, xMin - padX);
+                        yMax = Math.min(img.height, yMax + padY);
+                        xMax = Math.min(img.width, xMax + padX);
+
+                        const clipW = xMax - xMin;
+                        const clipH = yMax - yMin;
+
+                        if (clipW <= 0 || clipH <= 0) {
+                            resolve();
                             return;
                         }
 
-                        displayCanvas.width = clipWidth;
-                        displayCanvas.height = clipHeight;
-                        ctx.clearRect(0, 0, clipWidth, clipHeight);
-                        ctx.drawImage(img, xMin, yMin, clipWidth, clipHeight, 0, 0, clipWidth, clipHeight);
+                        displayCanvas.width = clipW;
+                        displayCanvas.height = clipH;
 
-                        const a = document.createElement('a');
-                        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                        a.download = `clipped--${baseName}.png`;
-                        a.href = displayCanvas.toDataURL('image/png');
-                        a.click();
+                        ctx.clearRect(0, 0, clipW, clipH);
+                        ctx.drawImage(img, xMin, yMin, clipW, clipH, 0, 0, clipW, clipH);
+
+                        // Enhanced background removal
+                        removeBackground(ctx, clipW, clipH);
+
+                        // Auto download
+                        const link = document.createElement('a');
+                        const baseName = file.name.replace(/\.[^/.]+$/, "");
+                        link.download = `clipped-${baseName}.png`;
+                        link.href = displayCanvas.toDataURL('image/png');
+                        link.click();
 
                         resolve();
                     };
@@ -274,22 +236,50 @@
             });
         }
 
-        async function fileToGenerativePart(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    if (!reader.result) {
-                        reject(new Error("Local reader returned empty image block."));
-                        return;
+        function removeBackground(ctx, width, height) {
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            const tolerance = 65;
+
+            // Sample multiple background points
+            const samples = [];
+            const points = [
+                [5, 5], [width-6, 5], [5, height-6], [width-6, height-6],
+                [Math.floor(width/2), 8]
+            ];
+
+            for (const [x, y] of points) {
+                const i = (y * width + x) * 4;
+                samples.push({ r: data[i], g: data[i+1], b: data[i+2] });
+            }
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                let isBg = false;
+
+                for (const s of samples) {
+                    const dist = Math.sqrt((r-s.r)**2 + (g-s.g)**2 + (b-s.b)**2);
+                    if (dist < tolerance) {
+                        isBg = true;
+                        break;
                     }
-                    resolve({
-                        inlineData: {
-                            data: reader.result.split(',')[1],
-                            mimeType: file.type
-                        },
-                    });
-                };
-                reader.onerror = () => reject(new Error("Failed reading local disk structure."));
+                }
+
+                if (isBg) data[i + 3] = 0; // transparent
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        async function fileToGenerativePart(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve({
+                    inlineData: {
+                        data: reader.result.split(',')[1],
+                        mimeType: file.type
+                    }
+                });
                 reader.readAsDataURL(file);
             });
         }
