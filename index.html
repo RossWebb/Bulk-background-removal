@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part-Out Vector | Stable</title>
+    <title>Part-Out Vector | Improved</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-white min-h-screen font-sans">
     <div class="max-w-4xl mx-auto p-6 md:p-12">
         <header class="mb-8 text-center">
             <h1 class="text-5xl font-black text-blue-500 tracking-tighter uppercase italic">Part-Out Vector</h1>
-            <p class="text-gray-400">Stable Version • Better Parsing</p>
-            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-yellow-500 bg-yellow-500/10 text-yellow-500 text-xs font-bold tracking-widest uppercase">
-                Enter Gemini API Key
+            <p class="text-gray-400">Tighter Crop + Stronger Background Removal</p>
+            <div id="status-badge" class="mt-4 inline-block px-4 py-1 rounded-full border border-green-500 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase">
+                Gemini 2.5 Flash Ready
             </div>
         </header>
 
@@ -28,13 +28,13 @@
                 <p class="text-blue-400 font-bold text-xl">Drop Images Here</p>
             </div>
 
-            <div id="log-container" class="mt-6 max-h-96 overflow-auto text-xs font-mono bg-black/50 p-4 rounded-xl"></div>
+            <div id="log-container" class="mt-6 max-h-80 overflow-auto text-xs font-mono bg-black/50 p-4 rounded-xl"></div>
 
             <div id="preview-container" class="hidden mt-6">
-                <h3 class="text-sm font-bold mb-2">Last Result</h3>
-                <canvas id="display-canvas" class="max-w-full border border-slate-700 rounded-xl bg-white"></canvas>
+                <h3 class="text-sm font-bold mb-2">Result</h3>
+                <canvas id="display-canvas" class="max-w-full border border-slate-700 rounded-xl"></canvas>
                 <button id="manual-download" class="mt-4 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold w-full">
-                    Download Last Image Again
+                    Download Image
                 </button>
             </div>
         </div>
@@ -46,7 +46,7 @@
         let genAI = null;
         let fileQueue = [];
         let currentIndex = 0;
-        let lastCanvasDataURL = null;
+        let lastDataURL = null;
 
         const statusBadge = document.getElementById('status-badge');
         const apiPanel = document.getElementById('api-panel');
@@ -58,11 +58,11 @@
         const displayCanvas = document.getElementById('display-canvas');
         const manualDownloadBtn = document.getElementById('manual-download');
 
-        function log(message, type = 'info') {
-            const entry = document.createElement('div');
-            entry.className = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-gray-400';
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logContainer.appendChild(entry);
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : '';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logContainer.appendChild(div);
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
@@ -78,17 +78,11 @@
         };
 
         function initEngine(key) {
-            try {
-                genAI = new GoogleGenerativeAI(key);
-                apiPanel.classList.add('hidden');
-                mainApp.classList.remove('hidden');
-                statusBadge.textContent = "✅ Gemini 2.5 Flash Ready";
-                statusBadge.className = "mt-4 inline-block px-4 py-1 rounded-full border border-green-500 bg-green-500/10 text-green-500 text-xs font-bold tracking-widest uppercase";
-                setupEvents();
-                log("Engine initialized successfully", "success");
-            } catch (e) {
-                log("Init error: " + e.message, "error");
-            }
+            genAI = new GoogleGenerativeAI(key);
+            apiPanel.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            log("Connected successfully", "success");
+            setupEvents();
         }
 
         function setupEvents() {
@@ -97,34 +91,33 @@
             dropZone.ondragover = e => e.preventDefault();
             fileUpload.onchange = e => handleFiles(e.target.files);
             manualDownloadBtn.onclick = () => {
-                if (lastCanvasDataURL) {
+                if (lastDataURL) {
                     const a = document.createElement('a');
-                    a.href = lastCanvasDataURL;
-                    a.download = `clipped-${Date.now()}.png`;
+                    a.href = lastDataURL;
+                    a.download = `part-${Date.now()}.png`;
                     a.click();
                 }
             };
         }
 
-        function handleFiles(fileList) {
-            const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
-            if (files.length === 0) return;
-            fileQueue = files;
+        function handleFiles(files) {
+            const images = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (!images.length) return;
+            fileQueue = images;
             currentIndex = 0;
             logContainer.innerHTML = '';
             previewContainer.classList.add('hidden');
-            log(`Starting batch of ${files.length} images`, "success");
             processNext();
         }
 
         async function processNext() {
             if (currentIndex >= fileQueue.length) {
-                log("✅ Batch completed!", "success");
+                log("Batch finished", "success");
                 return;
             }
 
             const file = fileQueue[currentIndex];
-            log(`Processing: ${file.name}`);
+            log(`Processing ${file.name}`);
 
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -132,45 +125,38 @@
 
                 const result = await model.generateContent([
                     imagePart,
-                    "Return only a JSON array with exactly 4 numbers: [ymin, xmin, ymax, xmax] using 0-1000 scale. No other text."
+                    `Return ONLY a tight bounding box around the main automotive part.
+Focus on the object itself, ignore background and shadows.
+Output exactly 4 numbers in JSON array: [ymin, xmin, ymax, xmax] (0-1000 scale)`
                 ]);
 
                 let text = result.response.text().trim();
-                log("Response received");
-
                 const box = extractBox(text);
-                if (!box) throw new Error("Could not extract coordinates");
+                if (!box) throw new Error("Failed to get coordinates");
 
-                await clipAndSave(file, box);
-                log(`✅ Clipped ${file.name}`, "success");
+                await clipImage(file, box);
+                log(`✅ Done: ${file.name}`, "success");
 
-            } catch (err) {
-                log(`❌ ERROR on ${file.name}: ${err.message}`, "error");
-                console.error(err);
+            } catch (e) {
+                log(`❌ ${file.name}: ${e.message}`, "error");
             }
 
             currentIndex++;
-            setTimeout(processNext, 900);
+            setTimeout(processNext, 1000);
         }
 
         function extractBox(text) {
-            // Clean common wrappers
-            text = text.replace(/```json|```|json/g, '').trim();
-            
+            text = text.replace(/```json|```/g, '').trim();
             try {
-                const parsed = JSON.parse(text);
-                if (Array.isArray(parsed) && parsed.length === 4) return parsed.map(Number);
-            } catch (e) {}
-
-            // Fallback: extract first 4 numbers
-            const matches = text.match(/\d+/g);
-            if (matches && matches.length >= 4) {
-                return matches.slice(0, 4).map(Number);
-            }
-            return null;
+                let arr = JSON.parse(text);
+                if (Array.isArray(arr)) return arr.map(n => Number(n));
+            } catch {}
+            
+            const nums = text.match(/\d+/g);
+            return nums && nums.length >= 4 ? nums.slice(0,4).map(Number) : null;
         }
 
-        async function clipAndSave(file, box) {
+        async function clipImage(file, box) {
             return new Promise(resolve => {
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -179,41 +165,34 @@
                         const canvas = displayCanvas;
                         const ctx = canvas.getContext('2d');
 
-                        let [yMin, xMin, yMax, xMax] = box;
+                        let [ymin, xmin, ymax, xmax] = box;
 
-                        yMin = (yMin / 1000) * img.height;
-                        xMin = (xMin / 1000) * img.width;
-                        yMax = (yMax / 1000) * img.height;
-                        xMax = (xMax / 1000) * img.width;
+                        ymin = (ymin / 1000) * img.height;
+                        xmin = (xmin / 1000) * img.width;
+                        ymax = (ymax / 1000) * img.height;
+                        xmax = (xmax / 1000) * img.width;
 
-                        const padX = img.width * 0.045;
-                        const padY = img.height * 0.045;
+                        const pad = 0.03;
+                        xmin = Math.max(0, xmin - img.width * pad);
+                        ymin = Math.max(0, ymin - img.height * pad);
+                        xmax = Math.min(img.width, xmax + img.width * pad);
+                        ymax = Math.min(img.height, ymax + img.height * pad);
 
-                        xMin = Math.max(0, xMin - padX);
-                        yMin = Math.max(0, yMin - padY);
-                        xMax = Math.min(img.width, xMax + padX);
-                        yMax = Math.min(img.height, yMax + padY);
-
-                        const w = xMax - xMin;
-                        const h = yMax - yMin;
-
-                        if (w < 30 || h < 30) {
-                            log("Box too small", "error");
-                            resolve();
-                            return;
-                        }
+                        const w = xmax - xmin;
+                        const h = ymax - ymin;
 
                         canvas.width = w;
                         canvas.height = h;
-                        ctx.drawImage(img, xMin, yMin, w, h, 0, 0, w, h);
+                        ctx.drawImage(img, xmin, ymin, w, h, 0, 0, w, h);
 
-                        removeBackground(ctx, w, h);
+                        advancedRemoveBackground(ctx, w, h);
 
-                        lastCanvasDataURL = canvas.toDataURL('image/png');
+                        lastDataURL = canvas.toDataURL('image/png');
                         previewContainer.classList.remove('hidden');
 
+                        // Auto download
                         const a = document.createElement('a');
-                        a.href = lastCanvasDataURL;
+                        a.href = lastDataURL;
                         a.download = `clipped-${file.name.replace(/\.[^/.]+$/, "")}.png`;
                         a.click();
 
@@ -225,39 +204,44 @@
             });
         }
 
-        function removeBackground(ctx, width, height) {
+        function advancedRemoveBackground(ctx, width, height) {
             const imgData = ctx.getImageData(0, 0, width, height);
             const data = imgData.data;
-            const tolerance = 68;
+            const tolerance = 75;
 
-            const samples = [
-                {x:8, y:8}, {x:width-9, y:8},
-                {x:8, y:height-9}, {x:width-9, y:height-9}
-            ];
+            // Sample more background points
+            const samples = [];
+            for (let i = 0; i < 6; i++) {
+                const x = Math.floor(Math.random() * (width * 0.2)) + 5;
+                const y = Math.floor(Math.random() * (height * 0.2)) + 5;
+                const idx = (y * width + x) * 4;
+                samples.push({r: data[idx], g: data[idx+1], b: data[idx+2]});
+            }
 
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i], g = data[i+1], b = data[i+2];
-                let isBg = false;
+                let isBackground = false;
+
                 for (const s of samples) {
-                    const idx = (s.y * width + s.x) * 4;
-                    const dist = Math.hypot(r - data[idx], g - data[idx+1], b - data[idx+2]);
+                    const dist = Math.hypot(r - s.r, g - s.g, b - s.b);
                     if (dist < tolerance) {
-                        isBg = true;
+                        isBackground = true;
                         break;
                     }
                 }
-                if (isBg) data[i+3] = 0;
+
+                if (isBackground) data[i + 3] = 0;
             }
             ctx.putImageData(imgData, 0, 0);
         }
 
         function fileToGenerativePart(file) {
             return new Promise(resolve => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve({
-                    inlineData: { data: reader.result.split(',')[1], mimeType: file.type }
+                const r = new FileReader();
+                r.onloadend = () => resolve({
+                    inlineData: { data: r.result.split(',')[1], mimeType: file.type }
                 });
-                reader.readAsDataURL(file);
+                r.readAsDataURL(file);
             });
         }
     </script>
